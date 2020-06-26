@@ -69,11 +69,15 @@ void WDOG_start(int quale, uint32_t secondi)
 	ASSERT(quale < MAX_WDTIMER_SW) ;
 	ASSERT(secondi) ;
 
-	if (0 == secondi) {
-	}
-	else if (quale >= MAX_WDTIMER_SW) {
+	if (quale >= MAX_WDTIMER_SW) {
+		DBG_ERR ;
 	}
 	else {
+		if (0 == secondi) {
+			DBG_ERR ;
+			secondi = 1 ;
+		}
+
 		uint32_t ttick = (secondi + PERIODO_S - 1) / PERIODO_S ;
 
 		if (ttick > TS_SCADUTO)

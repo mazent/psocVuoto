@@ -54,11 +54,15 @@ void timer_start_arg(int quale, uint32_t ms, void * v)
 	ASSERT(quale < MAX_TIMER_SW) ;
 	ASSERT(ms) ;
 
-	if (0 == ms) {
-	}
-	else if (quale >= MAX_TIMER_SW) {
+	if (quale >= MAX_TIMER_SW) {
+		DBG_ERR ;
 	}
 	else {
+		if (0 == ms) {
+			DBG_ERR ;
+			ms = 1 ;
+		}
+
 #ifdef MILLI_PER_TICK
 		// Arrotondo
 		uint32_t ttick = (ms + MILLI_PER_TICK - 1) / MILLI_PER_TICK ;

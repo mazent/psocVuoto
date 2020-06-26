@@ -576,13 +576,11 @@ static void bt_evn(uint32_t event, void * eventParam)
         DBG_PUTS("CYBLE_EVT_GAP_DEVICE_CONNECTED") ;
         advertising = false ;
         {
-#ifdef DBG_ABIL
         	CYBLE_GAP_CONN_PARAM_UPDATED_IN_CONTROLLER_T * prm = (CYBLE_GAP_CONN_PARAM_UPDATED_IN_CONTROLLER_T *) eventParam ;
             DBG_PRINTF("\t status        0x%02X", prm->status) ;
             DBG_PRINTF("\t connIntv      0x%04X", prm->connIntv) ;
             DBG_PRINTF("\t connLatency   0x%04X", prm->connLatency) ;
         	DBG_PRINTF("\t supervisionTO 0x%04X", prm->supervisionTO) ;
-#endif
         }
         evn_conn() ;
         break ;

@@ -1,9 +1,12 @@
 //#define STAMPA_DBG
-#include <project.h>
 #include "soc.h"
 
 #ifndef SOC_SPEGNI
 #	define SOC_SPEGNI	0
+#endif
+
+#ifdef DBG_ABIL
+#	define DBG_MALLOC		1
 #endif
 
 extern void timer_ini(void) ;
@@ -33,13 +36,15 @@ static UNA_APC vAPC[MAX_SOC_APC] ;
 static void hard_fault(void)
 {
 #ifdef NDEBUG
+	DBG_PUTS("! HARD FAULT !") ;
+	CyDelay(2) ;
 	CySoftwareReset() ;
 #else
 	__BKPT(0) ;
 #endif
 }
 
-#ifdef DEBUG
+#ifdef DBG_MALLOC
 
 static size_t tot = 0 ;
 typedef struct {
