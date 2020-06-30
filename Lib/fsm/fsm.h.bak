@@ -135,6 +135,8 @@
 #ifndef __FSM_H__
 #define __FSM_H__
 
+#include <stdbool.h>
+
 #include "fsm_cfg.h"
 
 /*
