@@ -36,11 +36,11 @@ static uint32_t gira_indirizzo(uint32_t addr)
 {
     addr = __REV(addr) ;
     addr >>= 8 ;
-
+    
     return addr ;
 }
-
-
+    
+    
 void S25_Read_Identification(S25_READ_ID * pRI)
 {
 	uint8_t cmd = CMD_RDID ;
@@ -75,7 +75,7 @@ void S25_Read_Unique_ID(S25_READ_U_ID * pUI)
 void S25_Read(uint32_t addr, void * v, size_t dim)
 {
 	uint8_t cmd[1 + 3] = { CMD_READ } ;
-
+    
     addr = gira_indirizzo(addr) ;
 
 	memcpy(cmd + 1, &addr, 3) ;
@@ -124,7 +124,7 @@ void S25_Clear_Status_Register(void)
 void S25_Write(uint32_t addr, const void * v, size_t dim)
 {
 	uint8_t cmd[1 + 3] = { CMD_PP } ;
-
+    
     addr = gira_indirizzo(addr) ;
 
 	memcpy(cmd + 1, &addr, 3) ;
@@ -172,7 +172,7 @@ uint8_t S25_Read_Status_Register_2(void)
 void S25_Sector_Erase(uint32_t addr)
 {
 	uint8_t cmd[1 + 3] = { CMD_SE } ;
-
+    
     addr = gira_indirizzo(addr) ;
 
 	memcpy(cmd + 1, &addr, 3) ;
@@ -187,7 +187,7 @@ void S25_Sector_Erase(uint32_t addr)
 void S25_Half_Block_Erase(uint32_t addr)
 {
 	uint8_t cmd[1 + 3] = { CMD_HBE } ;
-
+    
     addr = gira_indirizzo(addr) ;
 
 	memcpy(cmd + 1, &addr, 3) ;
@@ -202,7 +202,7 @@ void S25_Half_Block_Erase(uint32_t addr)
 void S25_Block_Erase(uint32_t addr)
 {
 	uint8_t cmd[1 + 3] = { CMD_BE } ;
-
+    
     addr = gira_indirizzo(addr) ;
 
 	memcpy(cmd + 1, &addr, 3) ;
@@ -284,7 +284,7 @@ uint8_t S25_Read_Configuration_Register_3(void)
 void S25_Security_Region_Erase(uint32_t addr)
 {
 	uint8_t cmd[1 + 3] = { CMD_SECRE } ;
-
+    
     addr = gira_indirizzo(addr) ;
 
 	memcpy(cmd + 1, &addr, 3) ;
@@ -299,7 +299,7 @@ void S25_Security_Region_Erase(uint32_t addr)
 void S25_Security_Region_Program(uint32_t addr, const void * v, size_t dim)
 {
 	uint8_t cmd[1 + 3] = { CMD_SECRP } ;
-
+    
     addr = gira_indirizzo(addr) ;
 
 	memcpy(cmd + 1, &addr, 3) ;
@@ -317,7 +317,7 @@ void S25_Security_Region_Program(uint32_t addr, const void * v, size_t dim)
 void S25_Security_Regions_Read(uint32_t addr, void * v, size_t dim)
 {
 	uint8_t cmd[1 + 3] = { CMD_SECRR } ;
-
+    
     addr = gira_indirizzo(addr) ;
 
 	memcpy(cmd + 1, &addr, 3) ;
@@ -355,6 +355,29 @@ void S25_Software_Reset(void)
 }
 
 #else
+
+void S25_Read_Identification(S25_READ_ID * x) {}
+void S25_Read_Unique_ID(S25_READ_U_ID * x) {}
+
+void S25_Read(uint32_t addr, void * v, size_t d) {}
+
+void S25_Write_Enable(void) {}
+void S25_Write_Disable(void) {}
+
+void S25_Write(uint32_t addr, const void * v, size_t d) {}
+
+void S25_Sector_Erase(uint32_t addr) {}
+
+uint8_t S25_Read_Status_Register_1(void) { return 0 ; }
+uint8_t S25_Read_Status_Register_2(void) { return 0 ; }
+
+uint8_t S25_Read_Configuration_Register_1(void) { return 0 ; }
+uint8_t S25_Read_Configuration_Register_2(void) { return 0 ; }
+uint8_t S25_Read_Configuration_Register_3(void) { return 0 ; }
+
+void S25_Security_Region_Erase(uint32_t addr) {}
+void S25_Security_Region_Program(uint32_t addr, const void * v, size_t dim) {}
+void S25_Security_Regions_Read(uint32_t addr, void * v, size_t dim) {}
 
 
 #endif

@@ -2,9 +2,21 @@
 
 #ifdef CY_PINS_SPI_CS_N_H
 
+#ifdef SPI_ATOMIC
+#	define ATOMIC_ENTER		\
+	uint32 irqmsk = CyDisableInts() ;
+#	define ATOMIC_LEAVE		\
+	CyEnableInts(irqmsk) ;
+#else
+#	define ATOMIC_ENTER
+#	define ATOMIC_LEAVE
+#endif
+
 void FSPI_write(const void * v, size_t dim)
 {
 	const uint8_t * tx = v ;
+
+	ATOMIC_ENTER
 
 	for (size_t i=0 ; i<dim ; ++i) {
 		uint8_t msk = 1 << 7 ;
@@ -17,11 +29,15 @@ void FSPI_write(const void * v, size_t dim)
 			msk >>= 1 ;
 		}
 	}
+
+	ATOMIC_LEAVE
 }
 
 void FSPI_read(void * v, size_t dim)
 {
 	uint8_t * rx = v ;
+
+	ATOMIC_ENTER
 
 	for (size_t i=0 ; i<dim ; ++i) {
 		uint8_t x = 0 ;
@@ -34,10 +50,14 @@ void FSPI_read(void * v, size_t dim)
 		}
 		rx[i] = x ;
 	}
+
+	ATOMIC_LEAVE
 }
 
 void FSPI_dummy_read(size_t dim)
 {
+	ATOMIC_ENTER
+
 	for (size_t i=0 ; i<dim ; ++i) {
 		uint8_t x = 0 ;
 		size_t bit = 7 ;
@@ -48,6 +68,8 @@ void FSPI_dummy_read(size_t dim)
 			x |= y << bit ;
 		}
 	}
+
+	ATOMIC_LEAVE
 }
 
 #else

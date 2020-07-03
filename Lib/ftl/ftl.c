@@ -1,4 +1,3 @@
-#define STAMPA_DBG
 #include "ftl.h"
 #include "bit.h"
 #include "soc/soc.h"
@@ -95,6 +94,8 @@ static void esamina_blocco(uint8_t * liberi, BLK_T blk)
     if (NULL != pF) {
         size_t ofs = 0 ;
 
+//        DBG_PRINTF("blocco %d", blk) ;
+
         // Tutto usato
         BIT_zeri(liberi, FTL_FSECT_NUM) ;
 
@@ -105,11 +106,16 @@ static void esamina_blocco(uint8_t * liberi, BLK_T blk)
             }
             else if (LRU_NONVALE == pF->lru ) {
                 // Usato
+//            	DBG_PRINTF("\t %d: usato", fis) ;
             }
             else if (LRU_LIBERO == pF->lru ) {
             	if ( uguale_a( pF, 0xFF, sizeof(FTL_SECT_F) ) ) {
             		// Libero!
+//            		DBG_PRINTF("\t %d: libero", fis) ;
             		BIT_uno(liberi, fis) ;
+            	}
+            	else {
+            		DBG_PRINTF("\t %d: usato", fis) ;
             	}
             }
             else if (pF->lgc >= FTL_LSECT_NUM) {
@@ -119,18 +125,21 @@ static void esamina_blocco(uint8_t * liberi, BLK_T blk)
                 // Valido!
                 if (LRU_LIBERO == vLog[pF->lgc].lru) {
                     // Prima volta
+//                	DBG_PRINTF("\t %d: primo %d", fis, pF->lgc) ;
                     vLog[pF->lgc].lru = pF->lru ;
                     vLog[pF->lgc].blk = blk ;
                     vLog[pF->lgc].fis = fis ;
                 }
                 else if ( sx_segue_dx(pF->lru, vLog[pF->lgc].lru) ) {
                     // Ho trovato una versione piu' recente
+//                	DBG_PRINTF("\t %d: nuovo %d", fis, pF->lgc) ;
                     vLog[pF->lgc].lru = pF->lru ;
                     vLog[pF->lgc].blk = blk ;
                     vLog[pF->lgc].fis = fis ;
                 }
                 else {
                     // Ho trovato una versione piu' vecchia
+//                	DBG_PRINTF("\t %d: vecchio %d", fis, pF->lgc) ;
                 }
             }
         }
@@ -173,8 +182,6 @@ static void esamina_blocco_cancellato(uint8_t * liberi, BLK_T blk)
 
     soc_free(pF) ;
 }
-
-
 
 // Copia tutti i settori meno uno
 
@@ -377,8 +384,11 @@ bool FTL_iniz(const FTL_OP * op)
     ASSERT(op) ;
     ASSERT(NULL == pOp) ;
 
-    static_assert( ((((LRU_T) NOT(0)) >> 1) - 2) > FTL_FSECT_NUM, "OKKIO A LRU_T") ;
-    static_assert( ((SECT_T) NOT(0)) > FTL_FSECT_NUM, "OKKIO A SECT_T") ;
+    static_assert(FTL_LSECT_NUM < FTL_FSECT_NUM, "AUMENTARE BLOCCO") ;
+    static_assert( ((((LRU_T) NOT(0)) >> 1) - 2) > FTL_FSECT_NUM, "AUMENTARE LRU_T") ;
+    static_assert( ((SECT_T) NOT(0)) > FTL_FSECT_NUM, "AUMENTARE SECT_T") ;
+    static_assert( ((BLK_T) NOT(0)) > FTL_BLK_1, "AUMENTARE BLK_T") ;
+    static_assert( ((BLK_T) NOT(0)) > FTL_BLK_2, "AUMENTARE BLK_T") ;
 
     DBG_PRINTF("%d settori fisici", FTL_FSECT_NUM) ;
 
@@ -502,8 +512,6 @@ bool FTL_read(SECT_T logic, void * v)
 	return esito ;
 }
 
-
-
 bool FTL_write(SECT_T logic, const void * v)
 {
 	bool esito = false ;
@@ -542,7 +550,6 @@ bool FTL_write(SECT_T logic, const void * v)
         // Non e' piu' libero
 		BIT_zero(liberi, fis) ;
 
-
         // Scrivo
         size_t ofs = sizeof(FTL_SECT_F) * fis ;
         if ( !pOp->pfWrite(blkCorr, ofs, pF, sizeof(FTL_SECT_F)) ) {
@@ -550,8 +557,15 @@ bool FTL_write(SECT_T logic, const void * v)
             break ;
         }
 
-        // Grazie a lru evito la scrittura per eliminare
-        // il dato precedente
+        // Annullo il precedente
+        if (LRU_LIBERO == vLog[logic].lru) {
+        	// L'allocazione del settore ha causato il trasferimento
+        	// del blocco e il suo erase
+        }
+        else {
+        	// lru rende poco importante il fallimento
+        	CHECK(elimina_fis(blkCorr, vLog[logic].fis)) ;
+        }
 
         // Aggiorno dati in ram
         vLog[logic].lru = pF->lru ;

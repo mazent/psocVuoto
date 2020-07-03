@@ -1,0 +1,202 @@
+<HTML>
+
+<!--
+    Per i grafici:
+        *) Il file di testo puo' essere creato con http://www.asciiflow.com/
+           Le immagini si ottengono con:
+                java -jar ditaa0_9.jar ?.txt ?.png
+        *) dot (www.graphviz.org)
+        *) https://www.gliffy.com/
+
+	hex speak: http://www.datagenetics.com/blog/march42013/index.html
+	    g -> 9    l -> 1    q ->        v ->
+	    h ->      m ->      r ->        w ->
+	    i -> 1    n ->      s -> 5      x ->
+	    j ->      o -> 0    t -> 7      y ->
+	    k ->      p ->      u ->        z -> 2
+
+	stile: http://www.w3.org/TR/html401/present/styles.html#edef-STYLE
+	.nome -> class="nome"
+	#nome -> id="nome"
+
+	formule:
+		https://www.mathjax.org/
+		https://www.youmath.it/come-scrivo-le-formule-matematiche.html
+		$$...$$ and \[...\] for displayed mathematics, and \(...\) for in-line mathematics
+-->
+
+<HEAD>
+    <TITLE>Aggiornamento via flash esterna</TITLE>
+    <STYLE TYPE="text/css">
+		H1              { text-align: center }
+        H2              { text-align: center }
+		P               { text-align: justify }
+		P:first-letter  { margin-left: 1cm }
+		DL:first-letter { margin-left: 1cm }
+		DT:first-letter { margin-left: 2cm }
+		DD:first-letter { margin-left: 2cm }
+		CAPTION         { font-weight: bold }
+		TD.titolo       { text-align: center; font-weight: bold; color: blue }
+
+		.evidenzia      { font-weight: bold; color: blue; font-size: 2em }
+		.attenzione     { font-weight: bold; color: red }
+		.corsivo		{ font-style: italic }
+		.neretto	    { font-weight: bold }
+		.nullo			{ text-decoration: line-through}
+    </STYLE>
+
+	<script type="text/javascript" async
+		src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML">
+	</script>
+</HEAD>
+
+<BODY>
+    <H1>Aggiornamento via flash esterna</H1>
+    
+		<p>Deriva da un <a target="_blank" href="https://github.com/cypresssemiconductorco/PSoC-4-BLE/tree/master/100_Projects_in_100_Days/Project051_NOR_Flash_Bootloader">progetto</a>
+		<cite>cypress</cite>
+		 
+		<P>Il protocollo per l'aggiornamento &egrave; quello <A target="_blank" href="https://www.cypress.com/documentation/software-and-drivers/cypresss-custom-ble-profiles-and-services"><CITE>cypress</CITE></A>.
+		Chi aggiorna pu&ograve; usare il codice di <A target="_blank" href="https://www.cypress.com/documentation/software-and-drivers/cysmart-mobile-app">questa app</A>
+		
+		<P class="attenzione">La cifratura citata di seguito non &egrave; mai stata provata
+		
+
+	<h2>Bootloader</h2>
+		      
+		<p><table>
+			<caption>Lista dei file
+			<tr>
+			<td><code>CustomInterface.c</code></td>
+			<td>Il bootloader &egrave; di tipo <cite>custom interface</cite>: questo file contiene le funzioni da implementare</td>
+			</tr>
+					
+			<tr>
+			<td><code>Encryption.c</code></td>
+			<td>Opzionale, usa <code>CyBle_AesCcmEncrypt</code> e <code>CyBle_AesCcmDecrypt</code> per cifrare il contenuto della flash esterna</td>
+			</tr>
+					
+			<tr>
+			<td><code>ExternalMemoryInterfaceXMEM.c</code>  </td>
+			<td>Accede alla memoria esterna</td>
+			</tr>
+					
+			<tr>
+			<td><code>WriteUserSFlash.c</code></td>
+			<td>Opzionale, legge e scrive la chiave di cifratura</td>
+			</tr>
+		</table>
+		
+		<P>Copiare il progetto e aggiungerlo al <CITE>workspace</CITE>
+		
+		<P>Se necessario, modificare il processore e inizializzare i pin di uscita
+		
+		<P>Aggiornare i componenti
+		
+		<P>Le stampe di debug avvengono tramite la seriale sw <CODE>UDI</CODE>, cartella <CODE>lib/diario</CODE>
+		
+		<P>L'accesso alla memoria esterna &egrave; a carico di <CODE>lib/xmem</CODE>: aggiornare, se serve,
+		col dispositivo utilizzato
+		
+		<P>Se si usa la ram non inizializzata conviene evitare <CODE>CY_NOINIT</CODE>: occorre dichiarare le stesse variabili
+		sia in BL che in APP, per cui, dopo la <CITE>sop</CITE>, non &egrave; pi&ugrave; possibile. L'unica variabile da
+		usare &egrave;		
+<PRE>
+CY_NOINIT uint32_t causa ;
+</PRE>
+		che BL inizializza con <CODE>CySysGetResetReason</CODE>
+
+		<P>Invece si pu&ograve; usare un nuovo <CODE>cm0gcc.ld</CODE>
+		per riservare una zona appena sopra l'heap e sotto lo stack (esempio: <CODE>bl_emu/cm0gcc.ld</CODE>).
+		Con quel file si pu&ograve; dichiarare:
+<PRE>
+#define NOMANSLAND		CY_SECTION(".nml")
+</PRE>		
+		<P>Dato che l'heap &egrave; sopra le varie sezioni in ram, e dato che la ram usata da APP &egrave;
+		pi&ugrave; grande di quella usata dal BL, l'area <CODE>.nml</CODE> non verr&agrave; sporcata
+		dal BL
+		
+		<P>Naturalmente le dimensioni dello stack e dell'heap si possono cambiare solo in <CODE>cm0gcc.ld</CODE>
+		
+		<P>Quando il BL &egrave; stabile, cio&egrave; alla <CITE>sop</CITE>, 
+		copiare <CODE>bl.hex</CODE>, <CODE>bl.elf</CODE> e <CODE>bl.map</CODE> nella cartella <CODE>bin</CODE>
+		e impostare il <CITE>bootloadable</CITE> su quei file
+
+		
+	<h2>Applicazione</h2>
+	
+		<p>I file da aggiungere all'applicazione si trovano nella cartella <code>bl_emu</code>
+	
+		<p><table>
+			<caption>Lista dei file
+			<tr>
+			<td><code>bl_emu.c</code></td>
+			<td>Interfaccia verso l'emulatore del bootloader</td>
+			</tr>
+					
+			<tr>
+			<td><code>BootloaderEmulator.c</code></td>
+			<td>Emula le azioni del bootloader, p.e. invoca <code>CyBLE_CyBtldrCommRead</code>, che &egrave; implementata dal servizio cypress</td>
+			</tr>
+					
+			<tr>
+			<td><code>Encryption.c</code></td>
+			<td>Opzionale, usa <code>CyBle_AesCcmEncrypt</code> e <code>CyBle_AesCcmDecrypt</code> per cifrare il contenuto della flash esterna</td>
+			</tr>
+					
+			<tr>
+			<td><code>ExternalMemoryInterfaceXMEM.c</code>  </td>
+			<td>Accede alla memoria esterna come l'omonimo file del bootloader, ma implementa anche un timeout per non restare perennemente in aggiornamento </td>
+			</tr>
+		</table>
+		
+		<P>Aggiungere il <CITE>bootloadable</CITE> e farlo puntare alla cartella <CODE>bin</CODE> del BL
+		
+		<P>Aggiungere al bluetooth il servizio <CITE>bootloader</CITE> di cypress (uid <CODE>00060000-F8CE-11E4-ABF4-0002A5D5C51B</CODE>)
+		
+		<P>Aggiungere un comando per iniziare l'aggiornamento
+
+		<ol>Per iniziare l'aggiornamento occorre:
+			<li>disabilitare gli altri servizi
+			<li>abilitare il servizio bootloader
+			<li>invocare <code>EMU_iniz</code>
+		</ol>
+
+		<ol>Per abortire l'aggiornamento occorre:
+			<li>invocare <code>EMU_fine</code>
+			<li>disabilitare il servizio bootloader
+			<li>riabilitare gli altri servizi
+		</ol>
+		
+		<p>L'emulatore usa la apc <code>APC_BL_EMU</code> per invocare periodicamente <code>BootloaderEmulator_HostLink</code>,
+		la quale gestisce la comunicazione ble tramite il servizio cypress
+		
+		<p>L'emulatore inizializza la flash esterna, che, intercettando le chiamate verso la flash, 
+		usa il timer <code>TIM_BL_EMU</code> per intercettare pause maggiori di <code>TO_AGG_MS</code>,
+		attualmente dieci secondi.
+		
+		<p>Se scatta il timeout viene invocata la funzione <code>to_aggiornamento</code>, che deve essere implementata
+		dall'applicazione. Ad esempio:
+<PRE>
+void to_aggiornamento(void * v)
+{
+	UNUSED(v);
+
+	EMU_fine() ;
+
+	BLE_SRV vs[] = {
+		{
+			.h = cyBle_btss.btServiceHandle,
+			.abil = false
+		},
+		{
+			.h = CYBLE_SANIFICATORE_SERVICE_HANDLE,
+			.abil = true
+		}
+	};
+
+	(void) BLE_servizi(vs, DIM_VETT(vs)) ;
+}
+</PRE>		
+</BODY>
+</HTML>

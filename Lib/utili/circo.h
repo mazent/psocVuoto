@@ -1,7 +1,7 @@
 #ifndef CIRCO_H_
 #define CIRCO_H_
 
-#include <stdbool.h>
+#include "includimi.h"
 
 /*
 	Per ottenere un buffer circolare di MAX_BUFF elementi:

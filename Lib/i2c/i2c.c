@@ -3,6 +3,17 @@
 
 #ifdef CY_PINS_SCL_H
 
+#ifdef SPI_ATOMIC
+#	define ATOMIC_ENTER		\
+	uint32 irqmsk = CyDisableInts() ;
+#	define ATOMIC_LEAVE		\
+	CyEnableInts(irqmsk) ;
+#else
+#	define ATOMIC_ENTER
+#	define ATOMIC_LEAVE
+#endif
+
+
 // cfr https://en.wikipedia.org/wiki/I%C2%B2C
 // https://en.wikipedia.org/wiki/Bit_banging
 
@@ -159,9 +170,10 @@ static uint8_t i2c_read_byte(bool nack, bool send_stop)
 bool I2C_write(uint8_t ind, const uint8_t * v, int dim)
 {
 	bool esito = false ;
-	uint32 irqmsk = CyDisableInts() ;
 
 	ind &= 0xFE ;
+
+	ATOMIC_ENTER
 
 	do {
 		if (i2c_write_byte(true,
@@ -186,7 +198,7 @@ bool I2C_write(uint8_t ind, const uint8_t * v, int dim)
 
 	i2c_stop_cond() ;
 
-	CyEnableInts(irqmsk) ;
+	ATOMIC_LEAVE
 
     return esito ;
 }
@@ -194,9 +206,10 @@ bool I2C_write(uint8_t ind, const uint8_t * v, int dim)
 bool I2C_read(uint8_t ind, uint8_t * v, int dim)
 {
 	bool esito = false ;
-	uint32 irqmsk = CyDisableInts() ;
 
 	ind |= 0x01 ;
+
+	ATOMIC_ENTER
 
 	do {
 		if (i2c_write_byte(true,
@@ -217,7 +230,7 @@ bool I2C_read(uint8_t ind, uint8_t * v, int dim)
 
 	i2c_stop_cond() ;
 
-	CyEnableInts(irqmsk) ;
+	ATOMIC_LEAVE
 
     return esito ;
 }
@@ -225,9 +238,10 @@ bool I2C_read(uint8_t ind, uint8_t * v, int dim)
 bool I2C_write_reg(uint8_t ind, uint8_t reg, const uint8_t * v, int dim)
 {
 	bool esito = false ;
-	uint32 irqmsk = CyDisableInts() ;
 
 	ind &= 0xFE ;
+
+	ATOMIC_ENTER
 
 	do {
 		if (i2c_write_byte(true,
@@ -259,7 +273,7 @@ bool I2C_write_reg(uint8_t ind, uint8_t reg, const uint8_t * v, int dim)
 
 	i2c_stop_cond() ;
 
-	CyEnableInts(irqmsk) ;
+	ATOMIC_LEAVE
 
     return esito ;
 }
@@ -291,6 +305,18 @@ bool I2C_read(uint8_t ind, uint8_t * v, int dim)
     DBG_ERR ;
 
     UNUSED(ind) ;
+    UNUSED(v) ;
+    UNUSED(dim) ;
+
+    return false ;
+}
+
+bool I2C_write_reg(uint8_t ind, uint8_t reg, const uint8_t * v, int dim)
+{
+    DBG_ERR ;
+
+    UNUSED(ind) ;
+    UNUSED(reg) ;
     UNUSED(v) ;
     UNUSED(dim) ;
 

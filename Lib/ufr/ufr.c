@@ -83,29 +83,4 @@ bool UFR_write(uint8_t numr, const void * v)
 	return esito ;
 }
 
-/******* Comunicazione BL-APP *****************************/
-
-//#define CMD_RESTA_NEL_BL	0x596DE663
-//
-//// Evito di scrivere in flash
-//CY_NOINIT uint32_t rnbl ;
-//CY_NOINIT uint32_t lbnr ;
-//
-//bool UFR_resta_nel_bl(void)
-//{
-//	uint32_t cmd = __REV(lbnr) ;
-//	return (cmd == rnbl) && (CMD_RESTA_NEL_BL == cmd) ;
-//}
-//
-//void UFR_forza_nel_bl(bool si)
-//{
-//	if (si) {
-//		rnbl = CMD_RESTA_NEL_BL ;
-//		lbnr = __REV(CMD_RESTA_NEL_BL) ;
-//	}
-//	else {
-//		// Annullo l'informazione
-//		rnbl = lbnr = 0 ;
-//	}
-//}
 

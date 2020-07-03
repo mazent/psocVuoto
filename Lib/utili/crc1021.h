@@ -1,6 +1,9 @@
 #ifndef CRC1021_H_
 #define CRC1021_H_
 
+#include <stdint.h>
+
+
 uint16_t CRC_1021_v(uint16_t crc, const void * v, int dim) ;
 uint16_t CRC_1021_b(uint16_t crc, uint8_t val) ;
 

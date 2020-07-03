@@ -1,21 +1,12 @@
 //#define STAMPA_DBG
 #include "xmem/xmem.h"
 #include "soc/soc.h"
-#include "xmem/cod/at25sf041.h"
+#include "at25sf041.h"
 
 //#define PARANOID_ACTIVITY		1
 
-#ifdef CY_PINS_SPI_CS_N_H
-
-//// Aggiungo un margine al valore di tCE
-//#define MAX_CHIP_ERASE_TIME_S     (S25FL064L_CHIP_ERASE_TIME_S + 10)
-
-// tPP = 1350 us + margine
 #define MAX_PAGE_PROGRAMMING_MS 	(AT25SF041_PAGE_PROGRAMMING_MS + 2)
-
-////
 #define MAX_SECTOR_ERASE_TIME_MS  	(AT25SF041_SECTOR_ERASE_TIME_MS + 10)
-
 #define MAX_BLOCK_ERASE_TIME_MS     (AT25SF041_BLOCK_ERASE_TIME_MS + 100)
 
 static bool iniz = false ;
@@ -46,14 +37,9 @@ bool XMEM_iniz(void)
     }
 }
 
-//#define ABORT_ERASE		1
-
 bool XMEM_erase_sector(uint32_t addr)
 {
 	bool esito = false ;
-//#ifdef ABORT_ERASE
-//	static bool abort = false ;
-//#endif
 
 	do {
 		if (!iniz) {
@@ -104,10 +90,11 @@ bool XMEM_erase_block(uint32_t addr)
             break ;
         }
 
-        if ( XMEM_is_erased(addr, AT25SF041_BLOCK_SIZE) ) {
-            esito = true ;
-            break ;
-        }
+//        if ( XMEM_is_erased(addr, AT25SF041_BLOCK_SIZE) ) {
+//            esito = true ;
+//            break ;
+//        }
+
         DBG_PRINTF("Erase sector: 0x%04X", addr) ;
         AT25_Write_Enable() ;
 
@@ -130,17 +117,8 @@ bool XMEM_erase_block(uint32_t addr)
         }
 
         if (MAX_BLOCK_ERASE_TIME_MS == s) {
-//			S25_Program_or_Erase_Suspend() ;
-//			S25_Software_Reset() ;
             break ;
         }
-
-//		uint8_t sr2 = S25_Read_Status_Register_2() ;
-//		if (1 == (sr2 & SR2_E_ERR)) {
-//			// Errore
-//			S25_Clear_Status_Register() ;
-//			break ;
-//		}
 
         esito = is_erased(addr, AT25SF041_BLOCK_SIZE) ;
     } while (false) ;
@@ -148,59 +126,14 @@ bool XMEM_erase_block(uint32_t addr)
     return esito ;
 }
 
-void XMEM_erase_boot_flash(void)
-{
-    uint32_t addr = 0 ;
-    XMEM_iniz() ;
-    for (uint8_t i = 0 ; i < 4 ; i++) {
-        XMEM_erase_block(addr) ;
-        addr += AT25SF041_BLOCK_SIZE ;
-    }
-}
-
-//bool XMEM_erase_all(void)
+//void XMEM_erase_boot_flash(void)
 //{
-//	bool esito = false ;
-//
-//	do {
-//		if (!iniz)
-//			break ;
-//
-//		AT25_Write_Enable() ;
-//
-//		uint8_t sr1 = AT25_Read_Status_Register_1() ;
-//		if (0 == (sr1 & SR1_WEL))
-//			break ;
-//
-//		S25_Chip_Erase() ;
-//
-//		int s ;
-//		for (s=0 ; s<MAX_CHIP_ERASE_TIME_S ; ++s) {
-//			CyDelay(1000) ;
-//
-//			uint8_t sr1 = AT25_Read_Status_Register_1() ;
-//			if (0 == (sr1 & SR1_WIP))
-//				break ;
-//		}
-//
-//		if (MAX_CHIP_ERASE_TIME_S == s) {
-//			S25_Program_or_Erase_Suspend() ;
-//			S25_Software_Reset() ;
-//			break ;
-//		}
-//
-//		uint8_t sr2 = S25_Read_Status_Register_2() ;
-//		if (1 == (sr2 & SR2_E_ERR)) {
-//			// Errore
-//			S25_Clear_Status_Register() ;
-//			break ;
-//		}
-//
-//		esito = is_erased(0, AT25SF041_BLOCK_SIZE * S25FL064L_BLOCK_COUNT) ;
-//
-//	} while (false) ;
-//
-//	return esito ;
+//    uint32_t addr = 0 ;
+//    XMEM_iniz() ;
+//    for (uint8_t i = 0 ; i < 4 ; i++) {
+//        XMEM_erase_block(addr) ;
+//        addr += AT25SF041_BLOCK_SIZE ;
+//    }
 //}
 
 bool XMEM_is_erased(uint32_t pos, size_t dim)
@@ -328,51 +261,6 @@ bool XMEM_write(uint32_t addr, const void * v, size_t dim)
     return esito ;
 }
 
-#else
-
-static uint8_t riga[AT25SF041_WRITE_PAGE_BUFFER_SIZE] ;
-
-bool XMEM_iniz(void)
-{
-    DBG_PUTS(__func__) ;
-
-    return true ;
-}
-
-bool XMEM_read(uint32_t a, void * v, size_t d)
-{
-    UNUSED(a) ;
-
-    DBG_PUTS(__func__) ;
-
-    memcpy(v, riga, d) ;
-
-    return true ;
-}
-
-bool XMEM_write(uint32_t a, const void * v, size_t d)
-{
-    UNUSED(a) ;
-
-    DBG_PUTS(__func__) ;
-
-    memcpy(riga, v, d) ;
-
-    return true ;
-}
-
-bool XMEM_erase_block(uint32_t a)
-{
-    UNUSED(a) ;
-
-    DBG_PUTS(__func__) ;
-
-    memset(riga, 0xFF, AT25SF041_WRITE_PAGE_BUFFER_SIZE) ;
-
-    return true ;
-}
-
-#endif
 
 #if 0
 

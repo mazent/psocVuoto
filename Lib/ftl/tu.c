@@ -2,6 +2,15 @@
 #include "ftl.h"
 #include "unity/unity.h"
 
+/*
+ * Modificare il progetto:
+ *     *) aggiungere unity
+ *     *) togliere app.c
+ *     *) aggiungere questo file
+ *     *) definire UNITY_INCLUDE_CONFIG_H
+ */
+
+
 //#define IN_RAM		1
 
 static bool cancellata = false ;
@@ -349,7 +358,7 @@ void t7(void)
 
 #if 1
 
-void ftl_tu(void)
+void app_ini(void)
 {
 	flash_iniz() ;
 

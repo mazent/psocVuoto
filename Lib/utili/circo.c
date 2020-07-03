@@ -1,5 +1,4 @@
 //#define STAMPA_DBG
-#include "includimi.h"
 #include "circo.h"
 
 static uint16_t incr(uint16_t x, uint16_t y, uint16_t l)

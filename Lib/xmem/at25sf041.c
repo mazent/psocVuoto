@@ -1,5 +1,5 @@
 #include "at25sf041.h"
-#include "fspi.h"
+#include "spi/fspi.h"
 
 #ifdef CY_PINS_SPI_CS_N_H
 
@@ -57,21 +57,6 @@ void AT25_Read_Identification(AT25_READ_ID * pRI)
 	memcpy(&pRI->device, rsp + 1, 2) ;
 }
 
-//void AT25_Read_Unique_ID(AT25_READ_U_ID * pUI)
-//{
-//	uint8_t cmd = CMD_RUID ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(&cmd, sizeof(cmd)) ;
-//
-//	FSPI_dummy_read(4) ;
-//
-//	FSPI_read(pUI->id, 8) ;
-//
-//	SPI_CS_N_Write(1) ;
-//}
-
 void AT25_Read(uint32_t addr, void * v, size_t dim)
 {
 	uint8_t cmd[1 + 3] = { CMD_READ } ;
@@ -98,28 +83,6 @@ void AT25_Write_Enable(void)
 
 	SPI_CS_N_Write(1) ;
 }
-
-//void S25_Write_Disable(void)
-//{
-//	uint8_t cmd = CMD_WRDI ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(&cmd, 1) ;
-//
-//	SPI_CS_N_Write(1) ;
-//}
-//
-//void S25_Clear_Status_Register(void)
-//{
-//	uint8_t cmd = CMD_CLSR ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(&cmd, sizeof(cmd)) ;
-//
-//	SPI_CS_N_Write(1) ;
-//}
 
 static size_t max_dim(uint32_t addr, size_t dim)
 {
@@ -172,21 +135,6 @@ uint8_t AT25_Read_Status_Register_1(void)
 	return cmd ;
 }
 
-//uint8_t S25_Read_Status_Register_2(void)
-//{
-//	uint8_t cmd = CMD_RDSR2 ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(&cmd, sizeof(cmd)) ;
-//
-//	FSPI_read(&cmd, 1) ;
-//
-//	SPI_CS_N_Write(1) ;
-//
-//	return cmd ;
-//}
-
 void AT25_Sector_Erase(uint32_t addr)
 {
 	uint8_t cmd[1 + 3] = { CMD_SE } ;
@@ -201,21 +149,6 @@ void AT25_Sector_Erase(uint32_t addr)
 
 	SPI_CS_N_Write(1) ;
 }
-
-//void S25_Half_Block_Erase(uint32_t addr)
-//{
-//	uint8_t cmd[1 + 3] = { CMD_HBE } ;
-//
-//    addr = gira_indirizzo(addr) ;
-//
-//	memcpy(cmd + 1, &addr, 3) ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(cmd, sizeof(cmd)) ;
-//
-//	SPI_CS_N_Write(1) ;
-//}
 
 void AT25_Block_Erase(uint32_t addr)
 {
@@ -232,145 +165,6 @@ void AT25_Block_Erase(uint32_t addr)
 	SPI_CS_N_Write(1) ;
 }
 
-//void S25_Chip_Erase(void)
-//{
-//	uint8_t cmd = CMD_CE ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(&cmd, 1) ;
-//
-//	SPI_CS_N_Write(1) ;
-//}
-//
-//void S25_Program_or_Erase_Suspend(void)
-//{
-//	uint8_t cmd = CMD_PES ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(&cmd, 1) ;
-//
-//	SPI_CS_N_Write(1) ;
-//}
-//
-//uint8_t S25_Read_Configuration_Register_1(void)
-//{
-//	uint8_t cmd = CMD_RDCR1 ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(&cmd, sizeof(cmd)) ;
-//
-//	FSPI_read(&cmd, 1) ;
-//
-//	SPI_CS_N_Write(1) ;
-//
-//	return cmd ;
-//}
-//
-//uint8_t S25_Read_Configuration_Register_2(void)
-//{
-//	uint8_t cmd = CMD_RDCR2 ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(&cmd, sizeof(cmd)) ;
-//
-//	FSPI_read(&cmd, 1) ;
-//
-//	SPI_CS_N_Write(1) ;
-//
-//	return cmd ;
-//}
-//
-//uint8_t S25_Read_Configuration_Register_3(void)
-//{
-//	uint8_t cmd = CMD_RDCR3 ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(&cmd, sizeof(cmd)) ;
-//
-//	FSPI_read(&cmd, 1) ;
-//
-//	SPI_CS_N_Write(1) ;
-//
-//	return cmd ;
-//}
-//
-//void S25_Security_Region_Erase(uint32_t addr)
-//{
-//	uint8_t cmd[1 + 3] = { CMD_SECRE } ;
-//
-//    addr = gira_indirizzo(addr) ;
-//
-//	memcpy(cmd + 1, &addr, 3) ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(cmd, sizeof(cmd)) ;
-//
-//	SPI_CS_N_Write(1) ;
-//}
-//
-//void S25_Security_Region_Program(uint32_t addr, const void * v, size_t dim)
-//{
-//	uint8_t cmd[1 + 3] = { CMD_SECRP } ;
-//
-//    addr = gira_indirizzo(addr) ;
-//
-//	memcpy(cmd + 1, &addr, 3) ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(cmd, sizeof(cmd)) ;
-//
-//	const size_t DIM = MIN(dim, AT25SF041_WRITE_PAGE_BUFFER_SIZE) ;
-//	FSPI_write(v, DIM) ;
-//
-//	SPI_CS_N_Write(1) ;
-//}
-//
-//void S25_Security_Regions_Read(uint32_t addr, void * v, size_t dim)
-//{
-//	uint8_t cmd[1 + 3] = { CMD_SECRR } ;
-//
-//    addr = gira_indirizzo(addr) ;
-//
-//	memcpy(cmd + 1, &addr, 3) ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(cmd, sizeof(cmd)) ;
-//
-//	FSPI_dummy_read(1) ;
-//
-//	FSPI_read(v, dim) ;
-//
-//	SPI_CS_N_Write(1) ;
-//}
-//
-//void S25_Software_Reset(void)
-//{
-//	// Abilito
-//	uint8_t cmd = CMD_RSTEN ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(&cmd, sizeof(cmd)) ;
-//
-//	SPI_CS_N_Write(1) ;
-//
-//	// Resetto
-//	cmd = CMD_RST ;
-//
-//	SPI_CS_N_Write(0) ;
-//
-//	FSPI_write(&cmd, sizeof(cmd)) ;
-//
-//	SPI_CS_N_Write(1) ;
-//}
 
 #else
 
