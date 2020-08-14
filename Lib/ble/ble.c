@@ -1398,7 +1398,7 @@ void BLE_config(const BLE_WRITE_CFG * a, const size_t b)
 {
 }
 
-void BLE_start(void)
+void BLE_start(const BLE_CB * x)
 {
 }
 void BLE_stop(void)
@@ -1420,7 +1420,7 @@ bool BLE_nome(const char * a)
     return false ;
 }
 
-bool BLE_mac(void * x)
+bool BLE_mac(void * x, bool y)
 {
     return false ;
 }

@@ -6,6 +6,16 @@ project(Base
 
 set(CMAKE_C_STANDARD 99)
 	
+find_program(CLANG_TIDY_COMMAND NAMES clang-tidy-12)
+if(CLANG_TIDY_COMMAND)
+    # --fix modifica i file
+    #set(CMAKE_C_CLANG_TIDY "${CLANG_TIDY_COMMAND};--header-filter=.;--checks=*")
+    # analisi statica
+    set(CMAKE_C_CLANG_TIDY "${CLANG_TIDY_COMMAND};--header-filter=.;--checks=-*,clang-analyzer-*")
+endif()
+
+
+
 #add_executable(target source ...)
 
 
