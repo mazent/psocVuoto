@@ -1,7 +1,7 @@
 #ifndef S25FL064L_H_
 #define S25FL064L_H_
 
-#include "includimi.h"
+#include "utili/includimi.h"
 
 #define S25FL064L_BLOCK_SIZE		(64 * 1024)
 #define S25FL064L_BLOCK_COUNT		128
