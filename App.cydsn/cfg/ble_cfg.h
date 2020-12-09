@@ -6,7 +6,7 @@
 #define BLE_MAX_NDD		11
 
 // Una delle due
-#define ABIL_BLE_NOTIF		1
+//#define ABIL_BLE_NOTIF		1
 //#define ABIL_BLE_INDIC		1
 
 //#define BLE_AUTEN			1
