@@ -28,7 +28,10 @@
 // che ha come scopo:
 //    1) ottimizzare il consumo evitando timer pari al tempo di adv
 // 	  2) aggiornare advertisement (https://community.cypress.com/message/36753)
-//    3) aggiornare user flash row (https://community.cypress.com/thread/52519)
+//    3) aggiornare user flash row (https://community.cypress.com/thread/52519
+//		 e https://community.cypress.com/message/36753)
+// 52519 consiglia anche di alzare la priorita' dell'interruzione ble
+// (BT_bless_isr = 0)
 //#define BLE_ADV_INVIATO		1
 
 #else

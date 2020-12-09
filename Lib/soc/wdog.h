@@ -2,34 +2,44 @@
 #define WDOG_H_
 
 #include "utili/includimi.h"
+#include "wdtimer_cfg.h"
 
-// watchdog
+// Watchdog
 // --------------------------
 
-// Libera il cane
-void WDOG_iniz(void) ;
-
-// Invocare nel ciclo infinito del main
+// Invocata nel ciclo infinito del main ma,
+// se serve, invocarla anche in altri loop
 void WDOG_calcia(void) ;
+
+// Watchdog software (definire WDOG_SW_ABIL)
+// --------------------------
+
+// La cb (WDOG_SW_FUN) viene invocata dentro la isr e dovrebbe resettare
+typedef void (*PF_WDOG_SW)(void) ;
+
+// 0 ferma il wds
+void WDOG_wds(uint16_t secondi);
 
 // Timer "lenti"
 // --------------------------
-#include "wdtimer_cfg.h"
-
-#define WDOG_UN_SECONDO		32768
 
 // Callback invocata quando scade il tempo impostato
 typedef void (* PF_WDTIMER_SW)(void) ;
 
-// Uso dei timer
-	// assegna al timer la sua callback (opzionale)
+// assegna al timer la sua callback (opzionale)
 void WDOG_setcb(int, PF_WDTIMER_SW) ;
-	// [ri]parte il timer
+// [ri]parte il timer
 void WDOG_start(int, uint32_t secondi) ;
-	// ferma il timer
+// ferma il timer
 void WDOG_stop(int) ;
-	// vera se il timer e' attivo
+// vera se il timer e' attivo
 bool WDOG_running(int) ;
+
+// Se WDOG_ADVERTISEMENT e' definito
+// Invocare in BLE_CB::adv_inviato
+void wdt_adv_inviato(void);
+// Invocare alla fine dell'advertising
+void wdt_adv_fine(void);
 
 /*
 	conteggio attuale globale
@@ -52,6 +62,8 @@ bool WDOG_running(int) ;
         DBG_PRINTF("\tdurata = %d.%03d s\n", d.secondi, d.milli) ;
 */
 
+#define WDOG_UN_SECONDO		32768
+
 uint32_t WDOG_now(void) ;
 
 typedef struct {
@@ -61,14 +73,14 @@ typedef struct {
 
 static inline void WDOG_durata(WDOG_DURATA * d, uint32_t tick)
 {
-	float durata = tick ;
+	double durata = tick ;
 
 	durata /= WDOG_UN_SECONDO ;
-	d->secondi = durata ;
+	d->secondi = (int) durata ;
 	durata -= d->secondi ;
 	// arrotondo
 	durata += .0005 ;
-	d->milli = durata * 1000.0 ;
+	d->milli = (int) (durata * 1000.0) ;
 }
 
 #endif

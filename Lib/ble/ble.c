@@ -2,15 +2,20 @@
 #include "ble.h"
 #include "soc/soc.h"
 
-/* CYBLE-212006-01: define the test register to switch the PA/LNA hardware control pins */
+/* CYBLE-212006-01: define the test register to switch the PA/LNA hardware
+  control pins */
 //#define CYREG_SRSS_TST_DDFT_CTRL      0x40030008
 
 /*
     Equivale a clocks->edit clock->ECO->configure
 
+    0x95 = 0x80 + 0x15
+
     Bit 7 = 8.1 pF
     Bit 6/0 = 3.69 + 0.1011 * N
     Con N = 0x15 = 21 -> 13.9131 pF
+
+    cfr https://community.cypress.com/docs/DOC-10498
 */
 //#define CAPACITOR_TRIM_VALUE       0x9595
 
@@ -46,12 +51,27 @@ static CYBLE_GATTS_HANDLE_VALUE_IND_T hvi ;
 static uint16_t indDim ;
 #endif
 
+#ifdef ABIL_BLE_NOTIF
+
+typedef struct {
+    uint16_t handle ;
+    void * data ;
+    uint16_t dim ;
+    CB_BLE_NOTIFY cb ;
+} S_NTF ;
+
+static S_NTF ntf ;
+
+static S_NTF * pNTF = NULL ;
+
+#endif
+
 #ifdef BLE_AUTEN
-	// Volete la passkey
-#	if CYBLE_BONDING_REQUIREMENT == CYBLE_BONDING_YES
-		// Avete scelto bonding
-#		define USA_BONDING		1
-#	endif
+// Volete la passkey
+#   if CYBLE_BONDING_REQUIREMENT == CYBLE_BONDING_YES
+// Avete scelto bonding
+#       define USA_BONDING      1
+#   endif
 #endif
 
 static void ble_attivo(void)
@@ -83,18 +103,106 @@ static void ble_authfail(void)
 
 #endif
 
+#ifdef ABIL_BLE_NOTIF
+
+static void notif_esito(bool esito)
+{
+    timer_stop(TIM_BLE_NTF) ;
+
+    if (pNTF->cb) {
+        pNTF->cb(pNTF->handle, esito) ;
+    }
+    pNTF = NULL ;
+}
+
+static void notifica(void)
+{
+    if (NULL == pNTF) {
+        // Ottimo
+    }
+    else if ( CYBLE_STACK_STATE_BUSY == CyBle_GattGetBusyStatus() ) {
+        // Aspetto
+    }
+    else {
+        // Preparo
+        uint8_t * dati = (uint8_t *) pNTF->data ;
+        uint16_t dim = MIN(mtu - 3, pNTF->dim) ;
+        CYBLE_GATTS_HANDLE_VALUE_NTF_T hvntf = {
+            .attrHandle = pNTF->handle,
+            .value = {
+                .val = dati,
+                .len = dim
+            }
+        } ;
+
+        // Eseguo
+        CYBLE_API_RESULT_T ris = CyBle_GattsNotification(cyBle_connHandle,
+                                                         &hvntf) ;
+
+        switch (ris) {
+        case CYBLE_ERROR_OK:
+            //DBG_PRINT_HEX("notif ", dati, dim) ;
+            pNTF->dim -= dim ;
+            if (0 == pNTF->dim) {
+                notif_esito(true) ;
+            }
+            else {
+                pNTF->data = dati + dim ;
+            }
+            break ;
+
+        case CYBLE_ERROR_MEMORY_ALLOCATION_FAILED:
+            // Bisogna aspettare che lo stack spedisca i dati
+            break ;
+
+        default:
+            // ??? esco
+            DBG_PRINTF("ERR %s %d ris = 0x%04X\n", __FILE__, __LINE__, ris) ;
+            notif_esito(false) ;
+            break ;
+
+        case CYBLE_ERROR_INVALID_PARAMETER:
+            // notifiche disabilitate ?
+            DBG_ERR ;
+            notif_esito(false) ;
+            break ;
+
+        case CYBLE_ERROR_INVALID_OPERATION:
+            // Riprovo
+            DBG_ERR ;
+            break ;
+        }
+    }
+}
+
+static void to_notif(void * v)
+{
+    UNUSED(v) ;
+
+    DBG_PUTS("timeout notifica") ;
+
+    if (pNTF) {
+        notif_esito(false) ;
+    }
+}
+
+#endif
+
 #ifdef USA_BONDING
 
 static void salva_bonding(void * v)
 {
     UNUSED(v) ;
 
-    // The cyBle_pendingFlashWrite variable is used to detect status of pending write to flash operation for stack
-    // data and CCCD. This function automatically clears pending bits after write operation complete.
+    // The cyBle_pendingFlashWrite variable is used to detect status of pending
+    // write to flash operation for stack
+    // data and CCCD. This function automatically clears pending bits after
+    // write operation complete.
     if (cyBle_pendingFlashWrite != 0u) {
         bool continua = true ;
         while (continua) {
-            // Application should keep calling this function till it return CYBLE_ERROR_OK
+            // Application should keep calling this function till it return
+            // CYBLE_ERROR_OK
             CYBLE_API_RESULT_T car = CyBle_StoreBondingData(0u) ;
             switch (car) {
             case CYBLE_ERROR_OK:
@@ -119,54 +227,54 @@ static void salva_bonding(void * v)
 
 static void gestione_bonded(void)
 {
-	CYBLE_GAP_BONDED_DEV_ADDR_LIST_T * bdal = soc_malloc(sizeof(CYBLE_GAP_BONDED_DEV_ADDR_LIST_T)) ;
+    CYBLE_GAP_BONDED_DEV_ADDR_LIST_T * bdal =
+        soc_malloc( sizeof(CYBLE_GAP_BONDED_DEV_ADDR_LIST_T) ) ;
 
-	do {
-		if (NULL == bdal) {
-			DBG_ERR ;
-			break ;
-		}
+    do {
+        if (NULL == bdal) {
+            DBG_ERR ;
+            break ;
+        }
 
-		if (CYBLE_ERROR_OK !=
-			CyBle_GapGetBondedDevicesList(bdal)) {
-			DBG_ERR ;
-			break ;
-		}
+        if ( CYBLE_ERROR_OK !=
+             CyBle_GapGetBondedDevicesList(bdal) ) {
+            DBG_ERR ;
+            break ;
+        }
 
-		stampa_bonded(bdal) ;
+        stampa_bonded(bdal) ;
 
-		if (bdal->count < CYBLE_GAP_MAX_BONDED_DEVICE) {
-			// Ottimo
-			break ;
-		}
+        if (bdal->count < CYBLE_GAP_MAX_BONDED_DEVICE) {
+            // Ottimo
+            break ;
+        }
 
-		DBG_PUTS("CyBle_GapRemoveOldestDeviceFromBondedList") ;
-		if (CYBLE_ERROR_OK !=
-			CyBle_GapRemoveOldestDeviceFromBondedList() ) {
-			DBG_ERR ;
-			break ;
-		}
+        DBG_PUTS("CyBle_GapRemoveOldestDeviceFromBondedList") ;
+        if ( CYBLE_ERROR_OK !=
+             CyBle_GapRemoveOldestDeviceFromBondedList() ) {
+            DBG_ERR ;
+            break ;
+        }
 
-		// Day015_Bonding: non serve perche' viene generato
-		// CYBLE_EVT_PENDING_FLASH_WRITE
-		//while(CYBLE_ERROR_OK != CyBle_StoreBondingData(1));
+        // Day015_Bonding: non serve perche' viene generato
+        // CYBLE_EVT_PENDING_FLASH_WRITE
+        //while(CYBLE_ERROR_OK != CyBle_StoreBondingData(1));
+    } while (false) ;
 
-	} while (false) ;
-
-	soc_free(bdal) ;
+    soc_free(bdal) ;
 }
 
 #endif
 
 #ifdef BLE_ADV_INVIATO
 
-static void bless_cb(uint32_t event, void * v)
+static void bless_cb(uint32 event, void * v)
 {
-	UNUSED(v) ;
+    UNUSED(v) ;
 
-	if (event & CYBLE_ISR_BLESS_ADV_CLOSE) {
-		pCB->adv_inviato() ;
-	}
+    if (event & CYBLE_ISR_BLESS_ADV_CLOSE) {
+        pCB->adv_inviato() ;
+    }
 }
 
 #endif
@@ -174,23 +282,22 @@ static void bless_cb(uint32_t event, void * v)
 static void avvia(void)
 {
     CYBLE_BLESS_CLK_CFG_PARAMS_T clockConfig ;
-#ifdef CAPACITOR_TRIM_VALUE
-    /* load capacitors on the ECO should be tuned and the tuned value
-    ** must be set in the CY_SYS_XTAL_BLERD_BB_XO_CAPTRIM_REG  */
-    CY_SYS_XTAL_BLERD_BB_XO_CAPTRIM_REG = CAPACITOR_TRIM_VALUE ;
-#endif
+//#ifdef CAPACITOR_TRIM_VALUE
+//    /* load capacitors on the ECO should be tuned and the tuned value
+//    ** must be set in the CY_SYS_XTAL_BLERD_BB_XO_CAPTRIM_REG  */
+//    CY_SYS_XTAL_BLERD_BB_XO_CAPTRIM_REG = CAPACITOR_TRIM_VALUE ;
+//#endif
     /* Get the configured clock parameters for BLE sub-system */
     CyBle_GetBleClockCfgParam(&clockConfig) ;
 
     /* Update the sleep clock inaccuracy PPM based on WCO crystal used */
-    /* If you see frequent link disconnection, tune your WCO or update the sleep clock accuracy here */
+    /* If you see frequent link disconnection, tune your WCO or update the sleep
+      clock accuracy here */
     clockConfig.bleLlSca = CYBLE_LL_SCA_000_TO_020_PPM ;
 
-    /* set the clock configuration parameter of BLE sub-system with updated values*/
+    /* set the clock configuration parameter of BLE sub-system with updated
+      values*/
     CyBle_SetBleClockCfgParam(&clockConfig) ;
-
-//    /* Put the device into discoverable mode so that a central device can connect to it */
-//	(void) CyBle_GappStartAdvertisement(CYBLE_ADVERTISING_FAST);
 }
 
 #if 0
@@ -204,12 +311,13 @@ static void leggi_mtu(void)
         DBG_PRINTF("mtu %d", mtu) ;
     }
 }
-#endif
 
+#endif
 
 static void evn_conn(void)
 {
-    if ( CYBLE_ERROR_OK == CyBle_GapGetPeerBdAddr(cyBle_connHandle.bdHandle, &mac) ) {
+    if ( CYBLE_ERROR_OK ==
+         CyBle_GapGetPeerBdAddr(cyBle_connHandle.bdHandle, &mac) ) {
         DBG_PRINTF("Connesso a (%s): %02X:%02X:%02X:%02X:%02X:%02X",
                    0 == mac.type ? "PUB" : "PRV",
                    mac.bdAddr[5], mac.bdAddr[4], mac.bdAddr[3],
@@ -239,75 +347,75 @@ static void evn_conn(void)
 #ifdef BLE_OBSERVER
 
 static enum {
-	OBS_STOPPED,
-	OBS_STARTING,
-	OBS_RUNNING,
-	OBS_STOPPING
+    OBS_STOPPED,
+    OBS_STARTING,
+    OBS_RUNNING,
+    OBS_STOPPING
 } obs_state = OBS_STOPPED ;
 
 bool BLE_obs_start(void)
 {
-	bool esito = false ;
+    bool esito = false ;
 
-	if (!bt_on) {
-		DBG_ERR ;
-	}
-	else if (OBS_STOPPED == obs_state) {
-		cyBle_discoveryInfo.scanType = CYBLE_GAPC_PASSIVE_SCANNING ;
-		obs_state = OBS_STARTING ;
-		if (CYBLE_ERROR_OK ==
-			CyBle_GapcStartDiscovery(&cyBle_discoveryInfo)) {
-			esito = true ;
-		}
-		else {
-			DBG_ERR ;
-			obs_state = OBS_STOPPED ;
-		}
-	}
-	else {
-		DBG_ERR ;
-	}
+    if (!bt_on) {
+        DBG_ERR ;
+    }
+    else if (OBS_STOPPED == obs_state) {
+        cyBle_discoveryInfo.scanType = CYBLE_GAPC_PASSIVE_SCANNING ;
+        obs_state = OBS_STARTING ;
+        if ( CYBLE_ERROR_OK ==
+             CyBle_GapcStartDiscovery(&cyBle_discoveryInfo) ) {
+            esito = true ;
+        }
+        else {
+            DBG_ERR ;
+            obs_state = OBS_STOPPED ;
+        }
+    }
+    else {
+        DBG_ERR ;
+    }
 
     return esito ;
 }
 
 bool BLE_obs_stop(void)
 {
-	bool esito = false ;
+    bool esito = false ;
 
-	if (!bt_on) {
-		DBG_ERR ;
-	}
-	else if (OBS_RUNNING == obs_state) {
-		obs_state = OBS_STOPPING ;
-		CyBle_GapcStopDiscovery() ;
-		esito = true ;
-	}
-	else {
-		DBG_ERR ;
-	}
+    if (!bt_on) {
+        DBG_ERR ;
+    }
+    else if (OBS_RUNNING == obs_state) {
+        obs_state = OBS_STOPPING ;
+        CyBle_GapcStopDiscovery() ;
+        esito = true ;
+    }
+    else {
+        DBG_ERR ;
+    }
 
-	return esito ;
+    return esito ;
 }
+
 #endif
 
-static PF_BLE_WRITE trova_wh(CYBLE_GATT_DB_ATTR_HANDLE_T attrCorr)
+static PF_BLE_WRITE trova_wh(CYBLE_GATT_DB_ATTR_HANDLE_T ac)
 {
-	PF_BLE_WRITE pfWrite = NULL ;
+    PF_BLE_WRITE pfWrite = NULL ;
 
-	if (pCfg) {
-	    const BLE_WRITE_CFG * cfg = pCfg ;
-	    for (size_t i = 0 ; i < numCfg ; ++i, ++cfg) {
-	        if (attrCorr == cfg->handle) {
-	            pfWrite = cfg->pfWrite ;
-	            break ;
-	        }
-	    }
-	}
+    if (pCfg) {
+        const BLE_WRITE_CFG * cfg = pCfg ;
+        for (size_t i = 0 ; i < numCfg ; ++i, ++cfg) {
+            if (ac == cfg->handle) {
+                pfWrite = cfg->pfWrite ;
+                break ;
+            }
+        }
+    }
 
-	return pfWrite ;
+    return pfWrite ;
 }
-
 
 #ifdef ABIL_BLE_WR_LONG
 
@@ -315,75 +423,79 @@ static CYBLE_GATT_DB_ATTR_HANDLE_T wlh = HANDLE_NON_VALIDO ;
 
 static void prep_write(CYBLE_GATTS_PREP_WRITE_REQ_PARAM_T * prm)
 {
-	// the CyBle_GattsPrepWriteReqSupport() function is called each time the device
-	// receives the first CYBLE_EVT_GATTS_PREP_WRITE_REQ event of Long Write Value
-	// procedure. For a Reliable Write Procedure, the CYBLE_EVT_GATTS_PREP_WRITE_REQ
-	// event is generated for each unique attribute handle, and therefore it requires calling the
-	// CyBle_GattsPrepWriteReqSupport() function.
+    // the CyBle_GattsPrepWriteReqSupport() function is called each time the
+    // device receives the first CYBLE_EVT_GATTS_PREP_WRITE_REQ event of Long
+    // Write
+    // Value procedure.
+    // For a Reliable Write Procedure, the CYBLE_EVT_GATTS_PREP_WRITE_REQ
+    // event is generated for each unique attribute handle, and therefore it
+    // requires calling the CyBle_GattsPrepWriteReqSupport() function.
 
-	do {
-		DBG_PRINTF("\t currentPrepWriteReqCount = %d", prm->currentPrepWriteReqCount) ;
+    do {
+        DBG_PRINTF("\t currentPrepWriteReqCount = %d",
+                   prm->currentPrepWriteReqCount) ;
 
-		if (HANDLE_NON_VALIDO != wlh) {
-			// Richieste successive
-			break ;
-		}
+        if (HANDLE_NON_VALIDO != wlh) {
+            // Richieste successive
+            break ;
+        }
 
-		// Prima richiesta ?
-		PF_BLE_WRITE pf = trova_wh(prm->baseAddr[0].handleValuePair.attrHandle) ;
-		if (NULL == pf) {
-			// ??
-			break ;
-		}
+        // Prima richiesta ?
+        PF_BLE_WRITE pf = trova_wh(prm->baseAddr[0].handleValuePair.attrHandle) ;
+        if (NULL == pf) {
+            // ??
+            break ;
+        }
 
-		if(prm->currentPrepWriteReqCount == 1u) {
-			// Salvo handle
-			wlh = prm->baseAddr[0].handleValuePair.attrHandle ;
+        if (prm->currentPrepWriteReqCount == 1u) {
+            // Salvo handle
+            wlh = prm->baseAddr[0].handleValuePair.attrHandle ;
 
-			// rispondo
-			CyBle_GattsPrepWriteReqSupport(CYBLE_GATTS_PREP_WRITE_SUPPORT);
-		}
-
-	} while (false) ;
+            // rispondo
+            CyBle_GattsPrepWriteReqSupport(CYBLE_GATTS_PREP_WRITE_SUPPORT) ;
+        }
+    } while (false) ;
 }
 
 static void exec_write(CYBLE_GATTS_EXEC_WRITE_REQ_T * prm)
 {
-	// the event is generated once for each Long Write Value procedure,
-	// and the event parameter provides a pointer to the start of the buffer where data is temporarily
-	// stored. The data will be written to the GATT database only if there is successful indication from
-	// the user, or if gattErrorCode equals to CYBLE_GATT_ERR_NONE
+    // the event is generated once for each Long Write Value procedure,
+    // and the event parameter provides a pointer to the start of the buffer
+    // where data is temporarily stored.
+    // The data will be written to the GATT database only if there is
+    // successful indication from the user, or if gattErrorCode equals to
+    // CYBLE_GATT_ERR_NONE
 
-	do {
-		DBG_PRINTF("\t prepWriteReqCount = %d", prm->prepWriteReqCount) ;
+    do {
+        DBG_PRINTF("\t prepWriteReqCount = %d", prm->prepWriteReqCount) ;
 
-		if (HANDLE_NON_VALIDO == wlh) {
-			break ;
-		}
+        if (HANDLE_NON_VALIDO == wlh) {
+            break ;
+        }
 
-		if(prm->baseAddr[0u].handleValuePair.attrHandle != wlh) {
-			break ;
-		}
+        if (prm->baseAddr[0u].handleValuePair.attrHandle != wlh) {
+            break ;
+        }
 
-		if(prm->execWriteFlag != CYBLE_GATT_EXECUTE_WRITE_EXEC_FLAG) {
-			// CYBLE_GATT_EXECUTE_WRITE_CANCEL_FLAG
-			wlh = HANDLE_NON_VALIDO ;
-			break ;
-		}
+        if (prm->execWriteFlag != CYBLE_GATT_EXECUTE_WRITE_EXEC_FLAG) {
+            // CYBLE_GATT_EXECUTE_WRITE_CANCEL_FLAG
+            wlh = HANDLE_NON_VALIDO ;
+            break ;
+        }
 
-		PF_BLE_WRITE pf = trova_wh(wlh) ;
-		if (NULL == pf) {
-			// ??
-			break ;
-		}
+        PF_BLE_WRITE pf = trova_wh(wlh) ;
+        if (NULL == pf) {
+            // ??
+            break ;
+        }
 
-		uint8_t * msg = prm->baseAddr[0].handleValuePair.value.val;
-		uint16_t dim = prm->baseAddr[0].handleValuePair.value.len ;
-		for (uint8_t i=1 ; i<prm->prepWriteReqCount ; ++i) {
-			dim += prm->baseAddr[i].handleValuePair.value.len ;
-		}
+        uint8_t * msg = prm->baseAddr[0].handleValuePair.value.val ;
+        uint16_t dim = prm->baseAddr[0].handleValuePair.value.len ;
+        for (uint8_t i = 1 ; i < prm->prepWriteReqCount ; ++i) {
+            dim += prm->baseAddr[i].handleValuePair.value.len ;
+        }
 
-		DBG_PRINT_HEX("exec_write", msg, dim) ;
+        DBG_PRINT_HEX("exec_write", msg, dim) ;
 
         if ( !pf(msg, dim) ) {
             // Errore
@@ -391,54 +503,61 @@ static void exec_write(CYBLE_GATTS_EXEC_WRITE_REQ_T * prm)
 
             prm->gattErrorCode = CYBLE_GATT_ERR_UNLIKELY_ERROR ;
         }
-
-	} while (false) ;
+    } while (false) ;
 }
 
 #endif
 
-static void bt_evn(uint32_t event, void * eventParam)
+static void bt_evn(uint32 event, void * eventParam)
 {
     switch (event) {
 #ifdef BLE_OBSERVER
     case CYBLE_EVT_GAPC_SCAN_PROGRESS_RESULT:
-    	DBG_PUTS("CYBLE_EVT_GAPC_SCAN_PROGRESS_RESULT") ;
-    	if (NULL == pCB->obs_adv) {
-    		DBG_ERR ;
-    	}
-    	else {
-    		CYBLE_GAPC_ADV_REPORT_T *advReport = (CYBLE_GAPC_ADV_REPORT_T*)eventParam ;
-    		BLE_OBS_INFO oi = {
-    				.type = advReport->eventType,
-					.mtype = advReport->peerAddrType,
-    				.mac = advReport->peerBdAddr,
-					.rssi = advReport->rssi,
-					.dim = advReport->dataLen,
-					.dati = advReport->data
-    		} ;
+        DBG_PUTS("CYBLE_EVT_GAPC_SCAN_PROGRESS_RESULT") ;
+        if (NULL == pCB->obs_adv) {
+            DBG_ERR ;
+        }
+        else {
+            CYBLE_GAPC_ADV_REPORT_T * advReport =
+                (CYBLE_GAPC_ADV_REPORT_T *) eventParam ;
+            BLE_OBS_INFO oi = {
+                .type = advReport->eventType,
+                .mtype = advReport->peerAddrType,
+                .mac = advReport->peerBdAddr,
+                .rssi = advReport->rssi,
+                .dim = advReport->dataLen,
+                .dati = advReport->data
+            } ;
 
-    		if (0 == oi.dim)
-    			oi.dati = NULL ;
+            if (0 == oi.dim) {
+                oi.dati = NULL ;
+            }
 
             pCB->obs_adv(&oi) ;
-    	}
+        }
         break ;
 
     case CYBLE_EVT_GAPC_SCAN_START_STOP:
-    	DBG_PUTS("CYBLE_EVT_GAPC_SCAN_START_STOP") ;
-    	switch (obs_state) {
-    	case OBS_STOPPED: DBG_ERR ; break ;
-    	case OBS_STARTING:
-    		obs_state = OBS_RUNNING ;
-    		DBG_PUTS("\trun") ;
-    		break ;
-    	case OBS_RUNNING: DBG_ERR ; break ;
-    	case OBS_STOPPING:
-    		obs_state = OBS_STOPPED ;
-    		DBG_PUTS("\tstop") ;
-    		break ;
-    	default: DBG_ERR ; break ;
-    	}
+        DBG_PUTS("CYBLE_EVT_GAPC_SCAN_START_STOP") ;
+        switch (obs_state) {
+        case OBS_STOPPED:
+            DBG_ERR ;
+            break ;
+        case OBS_STARTING:
+            obs_state = OBS_RUNNING ;
+            DBG_PUTS("\trun") ;
+            break ;
+        case OBS_RUNNING:
+            DBG_ERR ;
+            break ;
+        case OBS_STOPPING:
+            obs_state = OBS_STOPPED ;
+            DBG_PUTS("\tstop") ;
+            break ;
+        default:
+            DBG_ERR ;
+            break ;
+        }
         break ;
 
 #endif
@@ -480,20 +599,21 @@ static void bt_evn(uint32_t event, void * eventParam)
 #endif
 
 //    case CYBLE_EVT_GATTS_READ_CHAR_VAL_ACCESS_REQ: {
-//          CYBLE_GATTS_CHAR_VAL_READ_REQ_T * prm = (CYBLE_GATTS_CHAR_VAL_READ_REQ_T *) eventParam ;
+//          CYBLE_GATTS_CHAR_VAL_READ_REQ_T * prm =
+// (CYBLE_GATTS_CHAR_VAL_READ_REQ_T *) eventParam ;
 //      }
 //        break ;
 
 #ifdef ABIL_BLE_WR_LONG
     // https://community.cypress.com/message/41810
     case CYBLE_EVT_GATTS_PREP_WRITE_REQ:
-    	DBG_PUTS("CYBLE_EVT_GATTS_PREP_WRITE_REQ") ;
-    	prep_write((CYBLE_GATTS_PREP_WRITE_REQ_PARAM_T *) eventParam) ;
-    	break ;
+        DBG_PUTS("CYBLE_EVT_GATTS_PREP_WRITE_REQ") ;
+        prep_write( (CYBLE_GATTS_PREP_WRITE_REQ_PARAM_T *) eventParam ) ;
+        break ;
     case CYBLE_EVT_GATTS_EXEC_WRITE_REQ:
-    	DBG_PUTS("CYBLE_EVT_GATTS_EXEC_WRITE_REQ") ;
-    	exec_write((CYBLE_GATTS_EXEC_WRITE_REQ_T *) eventParam) ;
-    	break ;
+        DBG_PUTS("CYBLE_EVT_GATTS_EXEC_WRITE_REQ") ;
+        exec_write( (CYBLE_GATTS_EXEC_WRITE_REQ_T *) eventParam ) ;
+        break ;
 #endif
 
     case CYBLE_EVT_GATTS_WRITE_REQ: {
@@ -502,7 +622,8 @@ static void bt_evn(uint32_t event, void * eventParam)
             DBG_PUTS("CYBLE_EVT_GATTS_WRITE_REQ") ;
 
             /* Extract the Write data sent by Client */
-            CYBLE_GATTS_WRITE_REQ_PARAM_T * wrReqParam = (CYBLE_GATTS_WRITE_REQ_PARAM_T *) eventParam ;
+            CYBLE_GATTS_WRITE_REQ_PARAM_T * wrReqParam =
+                (CYBLE_GATTS_WRITE_REQ_PARAM_T *) eventParam ;
 
             attrCorr = wrReqParam->handleValPair.attrHandle ;
 
@@ -517,10 +638,11 @@ static void bt_evn(uint32_t event, void * eventParam)
                 }
 #ifdef BLE_AUTOR
                 // https://community.cypress.com/thread/52034
-                CYBLE_GATT_ERR_CODE_T gattErr = CyBle_GattsWriteAttributeValue(&wrReqParam->handleValPair,
-                                                                               0u,
-                                                                               &wrReqParam->connHandle,
-                                                                               CYBLE_GATT_DB_PEER_INITIATED) ;
+                CYBLE_GATT_ERR_CODE_T gattErr = CyBle_GattsWriteAttributeValue(
+                    &wrReqParam->handleValPair,
+                    0,
+                    &wrReqParam->connHandle,
+                    CYBLE_GATT_DB_PEER_INITIATED) ;
                 if (CYBLE_GATT_ERR_NONE != gattErr) {
                     CYBLE_GATTS_ERR_PARAM_T err = {
                         .attrHandle = attrCorr,
@@ -576,21 +698,39 @@ static void bt_evn(uint32_t event, void * eventParam)
         DBG_PUTS("CYBLE_EVT_GAP_DEVICE_CONNECTED") ;
         advertising = false ;
         {
-        	CYBLE_GAP_CONN_PARAM_UPDATED_IN_CONTROLLER_T * prm = (CYBLE_GAP_CONN_PARAM_UPDATED_IN_CONTROLLER_T *) eventParam ;
+            CYBLE_GAP_CONN_PARAM_UPDATED_IN_CONTROLLER_T * prm =
+                (CYBLE_GAP_CONN_PARAM_UPDATED_IN_CONTROLLER_T *) eventParam ;
             DBG_PRINTF("\t status        0x%02X", prm->status) ;
             DBG_PRINTF("\t connIntv      0x%04X", prm->connIntv) ;
             DBG_PRINTF("\t connLatency   0x%04X", prm->connLatency) ;
-        	DBG_PRINTF("\t supervisionTO 0x%04X", prm->supervisionTO) ;
+            DBG_PRINTF("\t supervisionTO 0x%04X", prm->supervisionTO) ;
         }
         evn_conn() ;
         break ;
 
     case CYBLE_EVT_GATTS_XCNHG_MTU_REQ:
-        mtu = ( ( (CYBLE_GATT_XCHG_MTU_PARAM_T *)eventParam )->mtu < CYBLE_GATT_MTU ) ?
-              ( (CYBLE_GATT_XCHG_MTU_PARAM_T *)eventParam )->mtu : CYBLE_GATT_MTU ;
+        mtu =
+            ( ( (CYBLE_GATT_XCHG_MTU_PARAM_T *) eventParam )->mtu <
+              CYBLE_GATT_MTU ) ?
+            ( (CYBLE_GATT_XCHG_MTU_PARAM_T *) eventParam )->mtu :
+            CYBLE_GATT_MTU ;
         DBG_PRINTF("CYBLE_EVT_GATTS_XCNHG_MTU_REQ %d", mtu) ;
         break ;
+#if (CYBLE_LL_MAX_TX_PAYLOAD_SIZE > CYBLE_LL_MIN_SUPPORTED_TX_PAYLOAD_SIZE) || \
+        (CYBLE_LL_MAX_RX_PAYLOAD_SIZE > CYBLE_LL_MIN_SUPPORTED_RX_PAYLOAD_SIZE)
+    // LE Data Packet Length Extension
+    case CYBLE_EVT_GAP_DATA_LENGTH_CHANGE: {
+            CYBLE_GAP_CONN_DATA_LENGTH_T * prm =
+                (CYBLE_GAP_CONN_DATA_LENGTH_T *) eventParam ;
 
+            DBG_PUTS("CYBLE_EVT_GAP_DATA_LENGTH_CHANGE") ;
+            DBG_PRINTF("\t connMaxTxOctets 0x%04X", prm->connMaxTxOctets) ;
+            DBG_PRINTF("\t connMaxTxTime   0x%04X", prm->connMaxTxTime) ;
+            DBG_PRINTF("\t connMaxRxOctets 0x%04X", prm->connMaxRxOctets) ;
+            DBG_PRINTF("\t connMaxRxTime   0x%04X", prm->connMaxRxTime) ;
+        }
+        break ;
+#endif
 #ifdef USA_BONDING
     case CYBLE_EVT_PENDING_FLASH_WRITE:
         /* Inform application that flash write is pending. Stack internal data
@@ -615,13 +755,13 @@ static void bt_evn(uint32_t event, void * eventParam)
 
     case CYBLE_EVT_GAP_PASSKEY_DISPLAY_REQUEST:
         DBG_PRINTF("CYBLE_EVT_GAP_PASSKEY_DISPLAY_REQUEST. Passkey is: %06ld",
-                   *(uint32_t*)eventParam) ;
+                   *(uint32_t *) eventParam) ;
         break ;
 
     case CYBLE_EVT_GAP_AUTH_COMPLETE:
         // quelle contrattate
 #if 1
-    	DBG_PUTS("CYBLE_EVT_GAP_AUTH_COMPLETE") ;
+        DBG_PUTS("CYBLE_EVT_GAP_AUTH_COMPLETE") ;
 #else
         stampa_au("CYBLE_EVT_GAP_AUTH_COMPLETE", eventParam) ;
 #endif
@@ -661,6 +801,11 @@ static void bt_evn(uint32_t event, void * eventParam)
         DBG_PUTS("disconnesso") ;
         connesso = false ;
         mtu = 0 ;
+#ifdef ABIL_BLE_NOTIF
+        if (pNTF) {
+            notif_esito(false) ;
+        }
+#endif
 #ifdef USA_BONDING
         gestione_bonded() ;
 #endif
@@ -672,9 +817,11 @@ static void bt_evn(uint32_t event, void * eventParam)
     case CYBLE_EVT_STACK_ON:
         DBG_PUTS("stack on") ;
 #ifdef CYREG_SRSS_TST_DDFT_CTRL
-        /* Configure the Link Layer to automatically switch PA control pin P3[2] and LNA control pin P3[3] */
-        CY_SET_XTND_REG32( (void CYFAR *)(CYREG_BLE_BLESS_RF_CONFIG), 0x0331 ) ;
-        CY_SET_XTND_REG32( (void CYFAR *)(CYREG_SRSS_TST_DDFT_CTRL), 0x80000302 ) ;
+        /* Configure the Link Layer to automatically switch PA control pin P3[2]
+          and LNA control pin P3[3] */
+        CY_SET_XTND_REG32( (void CYFAR *) (CYREG_BLE_BLESS_RF_CONFIG), 0x0331 ) ;
+        CY_SET_XTND_REG32( (void CYFAR *) (CYREG_SRSS_TST_DDFT_CTRL),
+                           0x80000302 ) ;
 #endif
 
 #ifdef CAPACITOR_TRIM_VALUE
@@ -682,7 +829,8 @@ static void bt_evn(uint32_t event, void * eventParam)
         ** must be set in the CY_SYS_XTAL_BLERD_BB_XO_CAPTRIM_REG  */
         //CY_SYS_XTAL_BLERD_BB_XO_CAPTRIM_REG = CAPACITOR_TRIM_VALUE;
         // Da https://community.cypress.com/docs/DOC-10498
-        CY_SET_XTND_REG32( (void CYFAR *)(CYREG_BLE_BLERD_BB_XO_CAPTRIM), CAPACITOR_TRIM_VALUE ) ;
+        CY_SET_XTND_REG32( (void CYFAR *) (CYREG_BLE_BLERD_BB_XO_CAPTRIM),
+                           CAPACITOR_TRIM_VALUE ) ;
 #endif
         avvia() ;
 
@@ -702,8 +850,12 @@ static void bt_evn(uint32_t event, void * eventParam)
             }
             else {
                 DBG_PRINTF("Io sono %02X:%02X:%02X:%02X:%02X:%02X",
-                           chiSono.bdAddr[5], chiSono.bdAddr[4], chiSono.bdAddr[3],
-                           chiSono.bdAddr[2], chiSono.bdAddr[1], chiSono.bdAddr[0]) ;
+                           chiSono.bdAddr[5],
+                           chiSono.bdAddr[4],
+                           chiSono.bdAddr[3],
+                           chiSono.bdAddr[2],
+                           chiSono.bdAddr[1],
+                           chiSono.bdAddr[0]) ;
             }
         }
 #endif
@@ -711,14 +863,14 @@ static void bt_evn(uint32_t event, void * eventParam)
         gestione_bonded() ;
 #endif
 #ifdef BLE_ADV_INVIATO
-        {
-        	CYBLE_BLESS_EVENT_PARAM_T be = {
-				.BlessStateMask = CYBLE_ISR_BLESS_ADV_CLOSE,
-				.bless_evt_app_cb = bless_cb
-        	};
-        	CYBLE_API_RESULT_T err = CyBle_RegisterBlessInterruptCallback(&be) ;
+        if (pCB->adv_inviato) {
+            CYBLE_BLESS_EVENT_PARAM_T be = {
+                .BlessStateMask = CYBLE_ISR_BLESS_ADV_CLOSE,
+                .bless_evt_app_cb = bless_cb
+            } ;
+            CYBLE_API_RESULT_T err = CyBle_RegisterBlessInterruptCallback(&be) ;
             if (CYBLE_ERROR_OK != err) {
-            	stampa_CYBLE_API_RESULT_T(err) ;
+                stampa_CYBLE_API_RESULT_T(err) ;
             }
         }
 #endif
@@ -761,40 +913,46 @@ void BLE_start(const BLE_CB * cb)
         // Complessivamente impiega un tempo inferiore ai 70 ms
         CyBle_Start(bt_evn) ;
 
-        while (CyBle_GetState() == CYBLE_STATE_INITIALIZING)
+        while (CyBle_GetState() == CYBLE_STATE_INITIALIZING) {
             CyBle_ProcessEvents() ;
+        }
     }
 }
 
 bool BLE_seed(uint32_t seed)
 {
+    bool esito = false ;
+
     if (!bt_on) {
         DBG_ERR ;
-        return false ;
     }
     else {
         CyBle_SetSeedForRandomGenerator(seed) ;
-        return true ;
+        esito = true ;
     }
+
+    return esito ;
 }
 
 bool BLE_rand(uint8_t * nc)
 {
+    bool esito = false ;
+
     if (!bt_on) {
         DBG_ERR ;
-        return false ;
     }
     else if ( CYBLE_ERROR_OK !=
               CyBle_GenerateRandomNumber(nc) ) {
         DBG_ERR ;
-        return false ;
     }
     else {
         DBG_PRINTF("BLE_rand %02X %02X %02X %02X %02X %02X %02X %02X",
                    nc[0], nc[1], nc[2], nc[3],
                    nc[4], nc[5], nc[6], nc[7], nc[8]) ;
-        return true ;
+        esito = true ;
     }
+
+    return esito ;
 }
 
 void BLE_stop(void)
@@ -803,7 +961,8 @@ void BLE_stop(void)
         DBG_PUTS("ble stop") ;
 
         if (connesso) {
-            if ( CYBLE_ERROR_OK == CyBle_GapDisconnect(cyBle_connHandle.bdHandle) ) {
+            if ( CYBLE_ERROR_OK ==
+                 CyBle_GapDisconnect(cyBle_connHandle.bdHandle) ) {
                 /* Wait for disconnection event */
                 while (CyBle_GetState() == CYBLE_STATE_CONNECTED) {
                     /* Process BLE events */
@@ -834,50 +993,50 @@ void BLE_stop(void)
 
 bool BLE_agg_char(uint16_t charh, bool locale, const void * dati, uint16_t dim)
 {
-	bool esito = false ;
+    bool esito = false ;
 
-	if (NULL == dati) {
-		DBG_ERR ;
-	}
-	else if (0 == dim) {
-		DBG_ERR ;
-	}
-	else if (!bt_on) {
-		DBG_ERR ;
-	}
-	else {
-		union {
-			const void * v ;
-			uint8_t * u ;
-		} u ;
-		u.v = dati ;
+    if (NULL == dati) {
+        DBG_ERR ;
+    }
+    else if (0 == dim) {
+        DBG_ERR ;
+    }
+    else if (!bt_on) {
+        DBG_ERR ;
+    }
+    else {
+        union {
+            const void * v ;
+            uint8_t * u ;
+        } u ;
+        u.v = dati ;
 
-		CYBLE_GATT_HANDLE_VALUE_PAIR_T hvp = {
-			.attrHandle = charh,
-			.value.val = u.u,
-			.value.len = dim
-		} ;
+        CYBLE_GATT_HANDLE_VALUE_PAIR_T hvp = {
+            .attrHandle = charh,
+            .value.val = u.u,
+            .value.len = dim
+        } ;
 
-		CYBLE_GATT_ERR_CODE_T ris = CyBle_GattsWriteAttributeValue(
-				&hvp,
-				0,
-				&cyBle_connHandle,
-				locale ? CYBLE_GATT_DB_LOCALLY_INITIATED : CYBLE_GATT_DB_PEER_INITIATED) ;
-		esito = CYBLE_GATT_ERR_NONE == ris ;
-		if (!esito) {
-			stampa_CYBLE_GATT_ERR_CODE_T(ris) ;
-		}
-	}
+        CYBLE_GATT_ERR_CODE_T ris = CyBle_GattsWriteAttributeValue(
+            &hvp,
+            0,
+            &cyBle_connHandle,
+            locale ? CYBLE_GATT_DB_LOCALLY_INITIATED :
+            CYBLE_GATT_DB_PEER_INITIATED) ;
+        esito = CYBLE_GATT_ERR_NONE == ris ;
+        if (!esito) {
+            stampa_CYBLE_GATT_ERR_CODE_T(ris) ;
+        }
+    }
 
-	return esito ;
+    return esito ;
 }
 
 static bool scrivi_attr(CYBLE_GATT_DB_ATTR_HANDLE_T h,
                         const void * v, const uint16_t dim,
                         uint8 flag)
 {
-    union
-    {
+    union {
         const void * v ;
         uint8 * p ;
     } u ;
@@ -941,83 +1100,93 @@ bool BLE_scrivi_attr(uint16_t h, const void * v, const uint16_t dim)
 
 bool BLE_servizi(const BLE_SRV * vSrv, size_t dim)
 {
-	size_t i=0 ;
-	CYBLE_GATT_DB_ATTR_HANDLE_T hmin = vSrv[0].h ;
+    size_t i = 0 ;
+    CYBLE_GATT_DB_ATTR_HANDLE_T hmin = vSrv[0].h ;
 
-	for ( ; i<dim ; ++i) {
-		CYBLE_GATT_DB_ATTR_HANDLE_T h = vSrv[i].h ;
-		CYBLE_GATT_ERR_CODE_T err ;
+    for ( ; i < dim ; ++i) {
+        CYBLE_GATT_DB_ATTR_HANDLE_T h = vSrv[i].h ;
+        CYBLE_GATT_ERR_CODE_T err ;
 
-		if (vSrv[i].abil) {
-			DBG_PRINTF("abilito srv %04X", h) ;
-			err = CyBle_GattsEnableAttribute(h) ;
-		}
-		else {
-			DBG_PRINTF("DISabilito srv %04X", h) ;
-			err = CyBle_GattsDisableAttribute(h) ;
-		}
+        if (vSrv[i].abil) {
+            DBG_PRINTF("abilito srv %04X", h) ;
+            err = CyBle_GattsEnableAttribute(h) ;
+        }
+        else {
+            DBG_PRINTF("DISabilito srv %04X", h) ;
+            err = CyBle_GattsDisableAttribute(h) ;
+        }
 
-		if (CYBLE_GATT_ERR_NONE != err) {
-			DBG_ERR ;
-			stampa_CYBLE_GATT_ERR_CODE_T(err) ;
-			break ;
-		}
-		else if (h < hmin)
-			hmin = h ;
-	}
+        if (CYBLE_GATT_ERR_NONE != err) {
+            DBG_ERR ;
+            stampa_CYBLE_GATT_ERR_CODE_T(err) ;
+            break ;
+        }
 
-	if (i == dim) {
-		CYBLE_GATT_HANDLE_VALUE_PAIR_T    handleValuePair;
+        if (h < hmin) {
+            hmin = h ;
+        }
+    }
+
+    if (i == dim) {
+        CYBLE_GATT_HANDLE_VALUE_PAIR_T handleValuePair ;
 #if 0
-		uint32 value;
+        uint32 value ;
 
-		/* Force client to rediscover services in range of bootloader service */
-		value = ((uint32)(((uint32) cyBle_btss.btServiceHandle) << 16u)) |
-				((uint32) (cyBle_btss.btServiceInfo[0u].btServiceCharDescriptors[0u]));
+        /* Force client to rediscover services in range of bootloader service */
+        value =
+            ( (uint32) ( ( (uint32) cyBle_btss.btServiceHandle ) << 16u ) ) |
+            ( (uint32) (cyBle_btss.btServiceInfo[0u].
+                        btServiceCharDescriptors[0u]) ) ;
 
+        handleValuePair.value.val = (uint8 *) &value ;
+        handleValuePair.value.len = sizeof(value) ;
 
-		handleValuePair.value.val = (uint8 *)&value;
-		handleValuePair.value.len = sizeof(value);
-
-		//handleValuePair.attrHandle = cyBle_gatts.serviceChangedHandle;
+        //handleValuePair.attrHandle = cyBle_gatts.serviceChangedHandle;
 #else
-		struct {
-			CYBLE_GATT_DB_ATTR_HANDLE_T minh ;
-			CYBLE_GATT_DB_ATTR_HANDLE_T maxh ;
-		} val ;
+        struct {
+            CYBLE_GATT_DB_ATTR_HANDLE_T minh ;
+            CYBLE_GATT_DB_ATTR_HANDLE_T maxh ;
+        } val ;
 
-		/* Force client to rediscover services dal minimo in su */
-		val.minh = hmin ;
-		val.maxh = 0xFFFF ;
+        /* Force client to rediscover services dal minimo in su */
+        val.minh = hmin ;
+        val.maxh = 0xFFFF ;
 
-		handleValuePair.value.val = (uint8 *)&val;
-		handleValuePair.value.len = sizeof(val);
+        handleValuePair.value.val = (uint8 *) &val ;
+        handleValuePair.value.len = sizeof(val) ;
 #endif
-		handleValuePair.attrHandle = cyBle_gatts.serviceChangedHandle;
+        handleValuePair.attrHandle = cyBle_gatts.serviceChangedHandle ;
 
-		DBG_PRINTF("scrivo %04X", handleValuePair.attrHandle) ;
-		DBG_PRINT_HEX("\t", handleValuePair.value.val, handleValuePair.value.len) ;
+        DBG_PRINTF("scrivo %04X", handleValuePair.attrHandle) ;
+        DBG_PRINT_HEX("\t",
+                      handleValuePair.value.val,
+                      handleValuePair.value.len) ;
 
-		CYBLE_GATT_ERR_CODE_T err = CyBle_GattsWriteAttributeValue(&handleValuePair, 0u, NULL,CYBLE_GATT_DB_LOCALLY_INITIATED);
-		if (CYBLE_GATT_ERR_NONE != err) { 
-			DBG_ERR ;
-			stampa_CYBLE_GATT_ERR_CODE_T(err) ;
-		}
-		else if (!connesso) {
-			// Ottimo
-		}
-		else {
-			// https://community.cypress.com/message/238346
-			DBG_PUTS("indico") ;
-            CYBLE_API_RESULT_T res = CyBle_GattsIndication(cyBle_connHandle, &handleValuePair);
-	        if (CYBLE_ERROR_OK != res) {
+        CYBLE_GATT_ERR_CODE_T err = CyBle_GattsWriteAttributeValue(
+            &handleValuePair,
+            0,
+            NULL,
+            CYBLE_GATT_DB_LOCALLY_INITIATED) ;
+        if (CYBLE_GATT_ERR_NONE != err) {
+            DBG_ERR ;
+            stampa_CYBLE_GATT_ERR_CODE_T(err) ;
+        }
+        else if (!connesso) {
+            // Ottimo
+        }
+        else {
+            // https://community.cypress.com/message/238346
+            DBG_PUTS("indico") ;
+            CYBLE_API_RESULT_T res = CyBle_GattsIndication(cyBle_connHandle,
+                                                           &handleValuePair) ;
+            if (CYBLE_ERROR_OK != res) {
                 DBG_ERR ;
                 stampa_CYBLE_API_RESULT_T(res) ;
-	        }
-		}
-	}
+            }
+        }
+    }
 
-	return i == dim ;
+    return i == dim ;
 }
 
 void BLE_presentati(BLE_IC * x)
@@ -1043,7 +1212,9 @@ void BLE_presentati(BLE_IC * x)
             .type = 0
         } ;
 
-        if ( CYBLE_ERROR_OK != CyBle_GapGenerateDeviceAddress(&ni, CYBLE_GAP_RANDOM_STATIC_ADDR, NULL) ) {
+        if ( CYBLE_ERROR_OK !=
+             CyBle_GapGenerateDeviceAddress(&ni, CYBLE_GAP_RANDOM_STATIC_ADDR,
+                                            NULL) ) {
             DBG_ERR ;
         }
         else if ( CYBLE_ERROR_OK != CyBle_SetDeviceAddress(&ni) ) {
@@ -1063,18 +1234,22 @@ void BLE_presentati(BLE_IC * x)
                 .type = 1
             } ;
 
-            if ( CYBLE_ERROR_OK != CyBle_GapGenerateDeviceAddress(&ic, CYBLE_GAP_RANDOM_STATIC_ADDR, NULL) ) {
+            if ( CYBLE_ERROR_OK !=
+                 CyBle_GapGenerateDeviceAddress(&ic,
+                                                CYBLE_GAP_RANDOM_STATIC_ADDR,
+                                                NULL) ) {
                 DBG_ERR ;
             }
             else if ( CYBLE_ERROR_OK == CyBle_SetDeviceAddress(&ic) ) {
                 // brutto ma obbligatorio
-                cyBle_discoveryModeInfo.advParam->ownAddrType = CYBLE_GAP_ADDR_TYPE_RANDOM ;
+                cyBle_discoveryModeInfo.advParam->ownAddrType =
+                    CYBLE_GAP_ADDR_TYPE_RANDOM ;
 
                 DBG_PRINTF("Appaio %02X:%02X:%02X:%02X:%02X:%02X",
                            ic.bdAddr[5], ic.bdAddr[4], ic.bdAddr[3],
                            ic.bdAddr[2], ic.bdAddr[1], ic.bdAddr[0]) ;
 
-                memcpy(x->bda, ic.bdAddr, 6) ;
+                memcpy(x->bda, ic.bdAddr, DIM_MAC) ;
                 x->cb() ;
             }
             else {
@@ -1097,8 +1272,8 @@ void BLE_presentati(BLE_IC * x)
             DBG_PUTS("NON autorizzato") ;
         }
 #endif
-        CHECK(CYBLE_ERROR_OK ==
-                      CyBle_GappStartAdvertisement(CYBLE_ADVERTISING_FAST)) ;
+        CHECK( CYBLE_ERROR_OK ==
+               CyBle_GappStartAdvertisement(CYBLE_ADVERTISING_FAST) ) ;
     } while (false) ;
 }
 
@@ -1121,7 +1296,8 @@ void BLE_nasconditi(void)
         }
 
         CyBle_GappStopAdvertisement() ;
-        //DBG_PRINTF("BLE_presentati: advertising %s", advertising ? "SI" : "NO") ;
+        //DBG_PRINTF("BLE_presentati: advertising %s", advertising ? "SI" :
+        // "NO") ;
     } while (false) ;
 }
 
@@ -1206,68 +1382,49 @@ bool BLE_mac(void * x, bool public)
 }
 
 #ifdef ABIL_BLE_NOTIF
-void BLE_notify(uint16_t h, void * v, uint16_t lenght)
+
+bool BLE_notify(BLE_NTF * n)
 {
-    if (connesso) {
-        CYBLE_GATTS_HANDLE_VALUE_NTF_T hvntf = {
-            .attrHandle = h
-        } ;
-        uint8_t * dati = (uint8_t *) v ;
+    bool esito = false ;
 
-        while (lenght) {
-            if ( CYBLE_STACK_STATE_BUSY == CyBle_GattGetBusyStatus() ) {
-                CyBle_ProcessEvents() ;
-                continue ;
+    do {
+        if (pNTF) {
+            // Notifica in corso
+            if (NULL == n) {
+                // da annullare
+                timer_stop(TIM_BLE_NTF) ;
+                pNTF = NULL ;
+
+                esito = true ;
             }
-
-            uint16_t dim = lenght ;
-            if (dim > mtu - 3) {
-                dim = mtu - 3 ;
-            }
-
-            hvntf.value.len = dim ;
-            hvntf.value.val = dati ;
-
-            CYBLE_API_RESULT_T ris = CyBle_GattsNotification(cyBle_connHandle, &hvntf) ;
-
-            CyBle_ProcessEvents() ;
-
-            switch (ris) {
-            case CYBLE_ERROR_OK:
-                //DBG_PRINT_HEX("notif ", dati, dim) ;
-                lenght -= dim ;
-                dati += dim ;
-                break ;
-
-            case CYBLE_ERROR_MEMORY_ALLOCATION_FAILED:
-                // Bisogna aspettare che lo stack spedisca i dati
-                CyBle_ProcessEvents() ;
-                break ;
-
-            default:
-                // ??? esco
-                DBG_PRINTF("ERR %s %d ris = 0x%04X\n", __FILE__, __LINE__, ris) ;
-                lenght = 0 ;
-                break ;
-
-            case CYBLE_ERROR_INVALID_PARAMETER:
-                // notifiche disabilitate
+            else {
                 DBG_ERR ;
-                lenght = 0 ;
-                break ;
-
-            case CYBLE_ERROR_INVALID_OPERATION:
-                // Riprovo
-                DBG_ERR ;
-                CyBle_ProcessEvents() ;
-                break ;
             }
+
+            break ;
         }
-    }
-    else {
-        DBG_ERR ;
-    }
+
+        if (!connesso) {
+            DBG_ERR ;
+            break ;
+        }
+
+        ntf.handle = n->handle ;
+        ntf.data = n->data ;
+        ntf.dim = n->dim ;
+        ntf.cb = n->cb ;
+
+        pNTF = &ntf ;
+
+        timer_setcb(TIM_BLE_NTF, to_notif) ;
+        timer_start(TIM_BLE_NTF, n->to) ;
+
+        esito = true ;
+    } while (false) ;
+
+    return esito ;
 }
+
 #endif
 
 #ifdef ABIL_BLE_INDIC
@@ -1282,7 +1439,6 @@ static void to_indic(void * v)
     }
 }
 
-// CyBle_GattcWriteCharacteristicDescriptors
 bool BLE_indicate(const S_BLE_IND * x)
 {
     bool esito = false ;
@@ -1330,6 +1486,7 @@ bool BLE_indicate(const S_BLE_IND * x)
 
     return esito ;
 }
+
 #endif
 
 void BLE_run(void)
@@ -1339,10 +1496,18 @@ void BLE_run(void)
     ***********************************************************************/
     CyBle_ProcessEvents() ;
 
+#ifdef ABIL_BLE_NOTIF
+    notifica() ;
+#endif
+
     /***********************************************************************
     *  Put BLE sub system in DeepSleep mode when it is idle
     ***********************************************************************/
+#ifdef NDEBUG
     CyBle_EnterLPM(CYBLE_BLESS_DEEPSLEEP) ;
+#else
+    // Ma non in debug!
+#endif
 }
 
 RICH_CPU BLE_cpu(void)
@@ -1357,37 +1522,42 @@ RICH_CPU BLE_cpu(void)
     if (connesso) {
         return CPU_PAUSA ;
     }
+
     // Vedi tabella 3
-    else if ( (blePower == CYBLE_BLESS_STATE_DEEPSLEEP || blePower == CYBLE_BLESS_STATE_ECO_ON) ) {
+    if ( (CYBLE_BLESS_STATE_DEEPSLEEP == blePower) ||
+         (CYBLE_BLESS_STATE_ECO_ON == blePower) ) {
         return CPU_FERMA ;
     }
-    else if (blePower != CYBLE_BLESS_STATE_EVENT_CLOSE) {
+
+    if (blePower != CYBLE_BLESS_STATE_EVENT_CLOSE) {
         return CPU_PAUSA ;
     }
-    else {
-        return CPU_ATTIVA ;
-    }
+
+    return CPU_ATTIVA ;
 }
 
 bool BLE_clock(void)
 {
+    bool esito = false ;
     CYBLE_BLESS_STATE_T blePower = CyBle_GetBleSsState() ;
 
     if (0 == blePower) {
         // Mai inizializzato
-        return false ;
     }
-    else if ( (blePower == CYBLE_BLESS_STATE_DEEPSLEEP || blePower == CYBLE_BLESS_STATE_ECO_ON) ) {
-        return false ;
+    else if ( (blePower == CYBLE_BLESS_STATE_DEEPSLEEP ||
+               blePower == CYBLE_BLESS_STATE_ECO_ON) ) {
     }
     else {
-        return blePower != CYBLE_BLESS_STATE_EVENT_CLOSE ;
+        esito = blePower != CYBLE_BLESS_STATE_EVENT_CLOSE ;
     }
+
+    return esito ;
 }
 
 void BLE_enter_deep(void)
 {
 }
+
 void BLE_leave_deep(void)
 {
 }
@@ -1398,9 +1568,10 @@ void BLE_config(const BLE_WRITE_CFG * a, const size_t b)
 {
 }
 
-void BLE_start(const BLE_CB * x)
+void BLE_start(void)
 {
 }
+
 void BLE_stop(void)
 {
 }
@@ -1420,7 +1591,7 @@ bool BLE_nome(const char * a)
     return false ;
 }
 
-bool BLE_mac(void * x, bool y)
+bool BLE_mac(void * x)
 {
     return false ;
 }

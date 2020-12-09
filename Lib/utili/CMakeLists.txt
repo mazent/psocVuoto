@@ -1,7 +1,7 @@
 set(CODICE
 	circo.c
 	crc1021.c
-	time2.c
+	varie.c
 )
 
 

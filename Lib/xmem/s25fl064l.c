@@ -1,5 +1,5 @@
 #include "s25fl064l.h"
-#include "spi/fspi.h"
+#include "fspi.h"
 
 #ifdef CY_PINS_SPI_CS_N_H
 

@@ -3,8 +3,11 @@
 
 #include "utili/includimi.h"
 
-#define XMEM_SECTOR_SIZE	( 4 * 1024)
-#define XMEM_BLOCK_SIZE		(64 * 1024)
+#define XMEM_SECTOR_SIZE    (4 * 1024)
+#define XMEM_BLOCK_SIZE     (64 * 1024)
+
+void XMEM_accendi(void) ;
+void XMEM_spegni(void) ;
 
 bool XMEM_iniz(void) ;
 

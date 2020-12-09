@@ -67,15 +67,15 @@ static fsm_t * fsm_corr = NULL ;
  */
 #if 0
 void
-fsm_display_table(fsm_t *fsm)
+fsm_display_table(fsm_t * fsm)
 {
     uint32_t i ;
     uint32_t j ;
-    state_tuple_t *state_ptr ;
-    event_tuple_t *event_ptr ;
+    state_tuple_t * state_ptr ;
+    event_tuple_t * event_ptr ;
 
-    state_description_t *p2state_description ;
-    event_description_t *p2event_description ;
+    state_description_t * p2state_description ;
+    event_description_t * p2event_description ;
 
     ASSERT(fsm) ;
     ASSERT(fsm->tag == FSM_TAG) ;
@@ -87,7 +87,7 @@ fsm_display_table(fsm_t *fsm)
     fsm_printf("    number_states = %d", fsm->number_states) ;
     fsm_printf("    number_events = %d", fsm->number_events) ;
     fsm_printf("    curr_state = %s",
-               p2state_description[fsm->curr_state].description ) ;
+               p2state_description[fsm->curr_state].description) ;
 
     /*
      * For the normalized state table, list the normalized
@@ -108,16 +108,20 @@ fsm_display_table(fsm_t *fsm)
              * Display the name of the state associated with the next state.
              */
             const char * da = p2event_description[j].description ;
-            if (NULL == da)
-            	da = "no desc" ;
+            if (NULL == da) {
+                da = "no desc" ;
+            }
 
-            const char * a = p2state_description[event_ptr->next_state].description ;
-            if (NULL == a)
-            	a = "no desc" ;
-			fsm_printf("  %u-%s / %s ", j, da, a) ;
+            const char * a =
+                p2state_description[event_ptr->next_state].description ;
+            if (NULL == a) {
+                a = "no desc" ;
+            }
+            fsm_printf("  %u-%s / %s ", j, da, a) ;
         }
     }
 }
+
 #endif
 
 /**
@@ -144,13 +148,13 @@ fsm_display_table(fsm_t *fsm)
  */
 #if FSM_HISTORY > 0
 void
-fsm_show_history(fsm_t *fsm)
+fsm_show_history(fsm_t * fsm)
 {
     uint32_t i, j ;
-    fsm_history_t  *history_ptr ;
+    fsm_history_t  * history_ptr ;
 
-    state_description_t *p2state_description ;
-    event_description_t *p2event_description ;
+    state_description_t * p2state_description ;
+    event_description_t * p2event_description ;
 
     ASSERT(fsm) ;
     ASSERT(fsm->tag == FSM_TAG) ;
@@ -188,6 +192,7 @@ fsm_show_history(fsm_t *fsm)
         j-- ;
     }
 }
+
 #endif
 
 /**
@@ -216,18 +221,20 @@ fsm_show_history(fsm_t *fsm)
  *
  */
 RC_FSM_t
-fsm_get_state(fsm_t *fsm, uint32_t *p2state)
+fsm_get_state(fsm_t * fsm, uint32_t * p2state)
 {
+    RC_FSM_t rc = RC_FSM_OK ;
+
     if (NULL == fsm) {
-    	return RC_FSM_NULL ;
+        rc = RC_FSM_NULL ;
     }
     else if (fsm->tag != FSM_TAG) {
-    	return RC_FSM_INVALID_HANDLE ;
+        rc = RC_FSM_INVALID_HANDLE ;
     }
     else {
-    	*p2state = fsm->curr_state ;
-    	return (RC_FSM_OK) ;
+        *p2state = fsm->curr_state ;
     }
+    return rc ;
 }
 
 static void forza_stato(fsm_t * fsm, uint32_t stato)
@@ -310,8 +317,10 @@ void fsm_forza_stato(fsm_t * fsm, uint32_t stato)
  *
  */
 RC_FSM_t
-fsm_set_exception_state(fsm_t *fsm, uint32_t exception_state)
+fsm_set_exception_state(fsm_t * fsm, uint32_t exception_state)
 {
+    RC_FSM_t rc = RC_FSM_OK ;
+
     ASSERT(fsm) ;
     ASSERT(fsm->tag == FSM_TAG) ;
 #ifdef DEBUG
@@ -321,19 +330,20 @@ fsm_set_exception_state(fsm_t *fsm, uint32_t exception_state)
      * Change the state of this FSM to the requested state.
      */
     if (NULL == fsm) {
-    	return RC_FSM_NULL ;
+        rc = RC_FSM_NULL ;
     }
     else if (fsm->tag != FSM_TAG) {
-    	return RC_FSM_INVALID_HANDLE ;
+        rc = RC_FSM_INVALID_HANDLE ;
     }
     else if (exception_state > fsm->number_states - 1) {
-        return (RC_FSM_INVALID_STATE) ;
+        rc = RC_FSM_INVALID_STATE ;
     }
     else {
         fsm->exception_state = exception_state ;
         fsm->exception_state_indicator = true ;
-        return (RC_FSM_OK) ;
     }
+
+    return rc ;
 }
 
 /**
@@ -360,30 +370,32 @@ fsm_set_exception_state(fsm_t *fsm, uint32_t exception_state)
  *
  */
 RC_FSM_t
-fsm_destroy(fsm_t **fsm)
+fsm_destroy(fsm_t * * fsm)
 {
-    fsm_t *p2fsm ;
+    fsm_t * p2fsm ;
 
     do {
         ASSERT(fsm) ;
-        if (NULL == fsm)
-        	break ;
+        if (NULL == fsm) {
+            break ;
+        }
 
         p2fsm = *fsm ;
 
         ASSERT(p2fsm) ;
-        if (NULL == p2fsm)
-        	break ;
+        if (NULL == p2fsm) {
+            break ;
+        }
 
         ASSERT(p2fsm->tag == FSM_TAG) ;
-        if (FSM_TAG != p2fsm->tag)
-        	break ;
+        if (FSM_TAG != p2fsm->tag) {
+            break ;
+        }
 #if FSM_HISTORY > 0
         FSM_FREE(p2fsm->history) ;
 #endif
         *fsm = NULL ;
         FSM_FREE(p2fsm) ;
-
     } while (false) ;
 
     return (RC_FSM_OK) ;
@@ -442,18 +454,18 @@ fsm_destroy(fsm_t **fsm)
  *
  */
 RC_FSM_t
-fsm_create(fsm_t **fsm,
-           const char *name,
+fsm_create(fsm_t * * fsm,
+           const char * name,
            uint32_t initial_state,
-           const state_description_t *state_description_table,
-           const event_description_t *event_description_table,
-           const state_tuple_t *state_table)
+           const state_description_t * state_description_table,
+           const event_description_t * event_description_table,
+           const state_tuple_t * state_table)
 {
-    fsm_t *temp_fsm ;
+    fsm_t * temp_fsm ;
     uint32_t i ;
     uint32_t j ;
-    const state_tuple_t *state_ptr ;
-    const event_tuple_t *event_ptr ;
+    const state_tuple_t * state_ptr ;
+    const event_tuple_t * event_ptr ;
 
     ASSERT(fsm) ;
     ASSERT(state_description_table) ;
@@ -463,7 +475,7 @@ fsm_create(fsm_t **fsm,
     /*
      * allocate memory to manage state machine
      */
-    temp_fsm = (fsm_t *)FSM_MALLOC( sizeof(fsm_t) ) ;
+    temp_fsm = (fsm_t *) FSM_MALLOC( sizeof(fsm_t) ) ;
     if (temp_fsm == NULL) {
         return (RC_FSM_NO_RESOURCES) ;
     }
@@ -630,14 +642,17 @@ fsm_create(fsm_t **fsm,
 #endif
     // MZ
 #ifdef USA_FSM_ADESSO
-	fsm_printf("%u) %s: parto da [%s]",
-			   fsm_adesso(),
-			   temp_fsm->fsm_name,
-			   temp_fsm->state_description_table[temp_fsm->curr_state].description) ;
+    fsm_printf("%u) %s: parto da [%s]",
+               fsm_adesso(),
+               temp_fsm->fsm_name,
+               temp_fsm->state_description_table[temp_fsm->curr_state].
+               description) ;
 #else
-	fsm_printf("%s: parto da [%s]",
-			   temp_fsm->fsm_name,
-			   temp_fsm->state_description_table[temp_fsm->curr_state].description) ;
+    fsm_printf(
+        "%s: parto da [%s]",
+        temp_fsm->fsm_name,
+        temp_fsm->state_description_table[temp_fsm->curr_state].
+        description) ;
 #endif
 
     entra_esci_stato pf = temp_fsm->state_table[temp_fsm->curr_state].pfEntra ;
@@ -655,12 +670,12 @@ fsm_create(fsm_t **fsm,
  */
 #if FSM_HISTORY > 0
 static void
-fsm_record_history(fsm_t *fsm,
+fsm_record_history(fsm_t * fsm,
                    uint32_t normalized_event,
                    uint32_t nextState,
                    RC_FSM_t handler_rc)
 {
-    fsm_history_t   *history_ptr ;
+    fsm_history_t   * history_ptr ;
 
     /*
      * get next index to record a little history
@@ -677,6 +692,7 @@ fsm_record_history(fsm_t *fsm,
     history_ptr->eventID = normalized_event ;
     history_ptr->handler_rc = handler_rc ;
 }
+
 #endif
 
 /**
@@ -717,11 +733,11 @@ fsm_record_history(fsm_t *fsm,
  *
  */
 RC_FSM_t
-fsm_engine(fsm_t *fsm,
+fsm_engine(fsm_t * fsm,
            uint32_t normalized_event,
-           void *p2event_buffer)
+           void * p2event_buffer)
 {
-    const event_tuple_t      *event_ptr ;
+    const event_tuple_t      * event_ptr ;
     event_cb_t event_handler ;
     RC_FSM_t rc ;
 
@@ -737,13 +753,13 @@ fsm_engine(fsm_t *fsm,
 
     do {
         if (NULL == fsm) {
-        	rc = RC_FSM_NULL ;
-        	break ;
+            rc = RC_FSM_NULL ;
+            break ;
         }
 
         if (fsm->tag != FSM_TAG) {
-        	rc = RC_FSM_INVALID_HANDLE ;
-        	break ;
+            rc = RC_FSM_INVALID_HANDLE ;
+            break ;
         }
 
         /*
@@ -767,14 +783,17 @@ fsm_engine(fsm_t *fsm,
 
         if (fsm->event_description_table[event_ptr->eventID].description) {
 #ifdef USA_FSM_ADESSO
-        fsm_printf("%u) %s: evento [%s]",
-                   fsm_adesso(),
-                   fsm->fsm_name,
-                   fsm->event_description_table[event_ptr->eventID].description) ;
+            fsm_printf("%u) %s: evento [%s]",
+                       fsm_adesso(),
+                       fsm->fsm_name,
+                       fsm->event_description_table[event_ptr->eventID].
+                       description) ;
 #else
-        fsm_printf("%s: evento [%s]",
-                   fsm->fsm_name,
-                   fsm->event_description_table[event_ptr->eventID].description) ;
+            fsm_printf(
+                "%s: evento [%s]",
+                fsm->fsm_name,
+                fsm->event_description_table[event_ptr->eventID].
+                description) ;
 #endif
         }
 

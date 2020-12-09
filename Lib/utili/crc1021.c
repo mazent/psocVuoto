@@ -40,12 +40,14 @@ static const uint16_t crcTable1021[256] = {
 	0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0,
 } ;
 
+#define BIT_PER_BYTE		8
+
 static uint16_t crcUpdate_1021(uint16_t Data, uint16_t Accum)
 {
 	uint16_t Temp ;
 
-	Temp  = (uint16_t)((Accum >> 8) ^ Data) ;
-	Accum = (uint16_t)((Accum << 8) ^ crcTable1021[ Temp ]) ;
+	Temp  = (uint16_t)((Accum >> BIT_PER_BYTE) ^ Data) ;
+	Accum = (uint16_t)((Accum << BIT_PER_BYTE) ^ crcTable1021[ Temp ]) ;
 
 	return Accum ;
 }

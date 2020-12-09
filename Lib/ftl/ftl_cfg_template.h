@@ -16,6 +16,8 @@
  * di settori fisici
  */
 
+#define FTL_ERASED		0xFF
+
 // Uso due blocchi di flash ...
 #define FTL_BLK_1 		64
 #define FTL_BLK_2 		65

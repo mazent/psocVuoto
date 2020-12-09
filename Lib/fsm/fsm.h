@@ -458,7 +458,7 @@ fsm_create(fsm_t **fsm,
 extern RC_FSM_t
 fsm_engine(fsm_t *fsm,
            uint32_t normalized_event,
-           void *p2event_bufer) ;
+           void *p2event_buffer) ;
 
 
 #endif  /* __FSM_H__ */

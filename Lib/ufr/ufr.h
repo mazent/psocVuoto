@@ -3,15 +3,10 @@
 
 #include "utili/includimi.h"
 
-/*
+/******************************************
  * Gestione delle user flash rows
- */
+ ******************************************/
 
-#ifdef UFR_128
-#	define UFR_DIM		128
-#else
-#	define UFR_DIM		256
-#endif
 #define UFR_NUMR	4
 
 bool UFR_iniz(void) ;
@@ -21,6 +16,19 @@ const void * UFR_dati(uint8_t numr) ;
 bool UFR_read(uint8_t numr, void *) ;
 bool UFR_write(uint8_t numr, const void *) ;
 
+/******************************************
+ * Interazione con BLE (definire UFR_E_BLE
+ * e opzionalmente il timer TIM_UFR)
+ * https://community.cypress.com/thread/52519
+ ******************************************/
+
+// Invocare quando si puo' scrivere, p.e. alla
+// fine dell'advertisement
+void UFR_flush(void);
+
+// Torna vero se i dati sono stati salvati in ufr
+bool UFR_flushed(void) ;
+
 /****************************************
 	la prima e' riservata al mac-address che,
 	assieme ad altri parametri, viene scritto
@@ -29,18 +37,15 @@ bool UFR_write(uint8_t numr, const void *) ;
 	Si puo' quindi usare per salvare anche gli altri parametri,
 	basta che la struttura inizi come ESEMPIO_RIGA_0
 
-	https://community.cypress.com/message/220592#220592
+	https://community.cypress.com/message/220592
 	https://community.cypress.com/docs/DOC-9287
-****************************************/
 
-typedef struct {
-	CYBLE_GAP_BD_ADDR_T mac ;
+	typedef struct {
+		CYBLE_GAP_BD_ADDR_T mac ;
 
-	uint8_t inutilizzabili[UFR_DIM - sizeof(CYBLE_GAP_BD_ADDR_T)] ;
-} ESEMPIO_RIGA_0 ;
+		uint8_t inutilizzabili[UFR_DIM - sizeof(CYBLE_GAP_BD_ADDR_T)] ;
+	} ESEMPIO_RIGA_0 ;
 
-/****************************************
-	la seconda contiene i parametri del programma
 ****************************************/
 
 

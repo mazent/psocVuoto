@@ -74,7 +74,7 @@ typedef struct {
 		//	   impostare: Mode 1 - Authenticated pairing with encryption
 		//				  strict pairing
 		//				  display
-		// 0 <= passkey <= BLE_MAX_PASSKEY
+		// 0 <= passkey <= BLE_MAX_PASSKEY < disabilitata
 #ifdef BLE_AUTEN
 	uint32_t passkey ;
 #endif
@@ -112,6 +112,7 @@ void BLE_nasconditi(void) ;
 	// p.e. se il peer legge la risposta sulla stesso attributo
 bool BLE_scrivi_attr_corr(const void *, const uint16_t) ;
 	// Invocare al di fuori della PF_BLE_WRITE
+	// Se invocata nella PF_BLE_WRITE fallisce
 bool BLE_scrivi_attr(uint16_t, const void *, const uint16_t) ;
 	// Generica
 bool BLE_agg_char(uint16_t charh, bool locale, const void * dati, uint16_t dim) ;
@@ -132,11 +133,27 @@ bool BLE_autorizza(void) ;
 const void * BLE_central(void) ;
 	// Legge il proprio l'indirizzo
 bool BLE_mac(void *, bool public) ;
-	// Notifica la caratteristica (definire ABIL_BLE_NOTIF)
+
+	// Notifica la caratteristica (definire ABIL_BLE_NOTIF e TIM_BLE_NTF)
+	// Il messaggio deve vivere fino alla callback
+	// Se si passa NULL viene annullata la notifica in corso
 	// cfr spec 4.2 [Vol 3, Part F] 3.4.7.1 Handle Value Notification pag 2199
 	// Nota: ble la trasmette comunque, intercettare la scrittura della
 	//       CYBLE_XXX_CONFIGURATION_DESC_HANDLE per sapere se e' abilitata
-void BLE_notify(uint16_t, void *, uint16_t) ;
+typedef void (*CB_BLE_NOTIFY)(uint16_t, bool) ;
+typedef struct {
+	// caratteristica da notificare
+	uint16_t handle ;
+	// dati
+	void * data ;
+	uint16_t dim ;
+	// timeout (ms)
+	uint16_t to ;
+	// opzionale
+	CB_BLE_NOTIFY cb ;
+} BLE_NTF ;
+bool BLE_notify(BLE_NTF *) ;
+
 	// Indica la caratteristica (definire ABIL_BLE_INDIC)
 	// Il messaggio deve vivere fino alla callback
 	// Definire TIM_BLE_IND

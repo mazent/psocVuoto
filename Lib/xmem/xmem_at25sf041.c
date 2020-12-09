@@ -5,9 +5,10 @@
 
 //#define PARANOID_ACTIVITY		1
 
-#define MAX_PAGE_PROGRAMMING_MS 	(AT25SF041_PAGE_PROGRAMMING_MS + 2)
-#define MAX_SECTOR_ERASE_TIME_MS  	(AT25SF041_SECTOR_ERASE_TIME_MS + 10)
+#define MAX_PAGE_PROGRAMMING_MS     (AT25SF041_PAGE_PROGRAMMING_MS + 2)
+#define MAX_SECTOR_ERASE_TIME_MS    (AT25SF041_SECTOR_ERASE_TIME_MS + 10)
 #define MAX_BLOCK_ERASE_TIME_MS     (AT25SF041_BLOCK_ERASE_TIME_MS + 100)
+#define MAX_CHIP_ERASE_TIME_MS      (AT25SF041_CHIP_ERASE_TIME_S * 1000 + 100)
 
 static bool iniz = false ;
 
@@ -16,6 +17,16 @@ static bool iniz = false ;
 #else
 #   define is_erased(a, b)      true
 #endif
+
+void XMEM_accendi(void)
+{
+    AT25_accendi() ;
+}
+
+void XMEM_spegni(void)
+{
+    AT25_spegni() ;
+}
 
 bool XMEM_iniz(void)
 {
@@ -30,53 +41,62 @@ bool XMEM_iniz(void)
     if (AT25SF041_MANUF != rid.manuf) {
         return false ;
     }
-    else {
-        iniz = rid.device == AT25SF041_DEVICE ;
 
-        return iniz ;
-    }
+    iniz = rid.device == AT25SF041_DEVICE ;
+
+    return iniz ;
 }
 
 bool XMEM_erase_sector(uint32_t addr)
 {
-	bool esito = false ;
+    bool esito = false ;
 
-	do {
-		if (!iniz) {
-			DBG_ERR ;
-			break ;
-		}
+    DBG_PRINTF("%s(%08X)", __func__, addr) ;
 
-		AT25_Write_Enable() ;
-
-		uint8_t sr1 = AT25_Read_Status_Register_1() ;
-		if (0 == (sr1 & SR1_WEL)) {
-			DBG_ERR ;
-			break ;
-		}
-
-		AT25_Sector_Erase(addr) ;
-
-        int s ;
-
-        for (s = 0 ; s < MAX_SECTOR_ERASE_TIME_MS ; ++s) {
-            CyDelay(10) ;
-
-            uint8_t sr1 = AT25_Read_Status_Register_1() ;
-            if ( 0 == (sr1 & SR1_WIP) ) {
-                break ;
-            }
-        }
-
-        if (MAX_BLOCK_ERASE_TIME_MS == s) {
+    do {
+        if (!iniz) {
+            DBG_ERR ;
             break ;
         }
 
-		esito = is_erased(addr, AT25SF041_SECTOR_SIZE) ;
+        AT25_Write_Enable() ;
 
-	} while (false) ;
+        uint8_t sr1 = AT25_Read_Status_Register_1() ;
+        if ( 0 == (sr1 & SR1_WEL) ) {
+            DBG_ERR ;
+            break ;
+        }
 
-	return esito ;
+        AT25_Sector_Erase(addr) ;
+
+        const int PERIODO = 10 ;
+        const int NUM_PERIODI = MAX_SECTOR_ERASE_TIME_MS / PERIODO ;
+        int s ;
+        for (s = 0 ; s < NUM_PERIODI ; ++s) {
+            sr1 = AT25_Read_Status_Register_1() ;
+            if ( 0 == (sr1 & SR1_WIP) ) {
+                break ;
+            }
+
+            CyDelay(PERIODO) ;
+        }
+
+        if (0 == s) {
+            // Troppo poco
+            DBG_ERR ;
+            break ;
+        }
+
+        if (NUM_PERIODI == s) {
+            // Troppo
+            DBG_ERR ;
+            break ;
+        }
+
+        esito = is_erased(addr, AT25SF041_SECTOR_SIZE) ;
+    } while (false) ;
+
+    return esito ;
 }
 
 bool XMEM_erase_block(uint32_t addr)
@@ -90,12 +110,6 @@ bool XMEM_erase_block(uint32_t addr)
             break ;
         }
 
-//        if ( XMEM_is_erased(addr, AT25SF041_BLOCK_SIZE) ) {
-//            esito = true ;
-//            break ;
-//        }
-
-        DBG_PRINTF("Erase sector: 0x%04X", addr) ;
         AT25_Write_Enable() ;
 
         uint8_t sr1 = AT25_Read_Status_Register_1() ;
@@ -105,18 +119,27 @@ bool XMEM_erase_block(uint32_t addr)
 
         AT25_Block_Erase(addr) ;
 
+        const int PERIODO = 10 ;
+        const int NUM_PERIODI = MAX_BLOCK_ERASE_TIME_MS / PERIODO ;
         int s ;
-
-        for (s = 0 ; s < MAX_BLOCK_ERASE_TIME_MS ; ++s) {
-            CyDelay(10) ;
-
-            uint8_t sr1 = AT25_Read_Status_Register_1() ;
+        for (s = 0 ; s < NUM_PERIODI ; ++s) {
+            sr1 = AT25_Read_Status_Register_1() ;
             if ( 0 == (sr1 & SR1_WIP) ) {
                 break ;
             }
+
+            CyDelay(PERIODO) ;
         }
 
-        if (MAX_BLOCK_ERASE_TIME_MS == s) {
+        if (0 == s) {
+            // Troppo poco
+            DBG_ERR ;
+            break ;
+        }
+
+        if (NUM_PERIODI == s) {
+            // Troppo
+            DBG_ERR ;
             break ;
         }
 
@@ -125,6 +148,56 @@ bool XMEM_erase_block(uint32_t addr)
 
     return esito ;
 }
+
+//bool XMEM_erase_chip(void)
+//{
+//    bool esito = false ;
+//
+//    DBG_PUTS(__func__) ;
+//
+//    do {
+//        if (!iniz) {
+//            break ;
+//        }
+//
+//        AT25_Write_Enable() ;
+//
+//        uint8_t sr1 = AT25_Read_Status_Register_1() ;
+//        if ( 0 == (sr1 & SR1_WEL) ) {
+//            break ;
+//        }
+//
+//        AT25_Chip_Erase();
+//
+//        const int PERIODO = 100;
+//        const int NUM_PERIODI =MAX_CHIP_ERASE_TIME_MS/PERIODO;
+//        int s ;
+//        for (s = 0 ; s < NUM_PERIODI ; ++s) {
+//            sr1 = AT25_Read_Status_Register_1() ;
+//            if ( 0 == (sr1 & SR1_WIP) ) {
+//                break ;
+//            }
+//
+//            CyDelay(PERIODO) ;
+//        }
+//
+//        if (0==s) {
+//          // Troppo poco
+//            DBG_ERR ;
+//            break ;
+//        }
+//
+//        if (NUM_PERIODI == s) {
+//          // Troppo
+//            DBG_ERR ;
+//            break ;
+//        }
+//
+//        esito = is_erased(addr, AT25SF041_BLOCK_SIZE) ;
+//    } while (false) ;
+//
+//    return esito ;
+//}
 
 //void XMEM_erase_boot_flash(void)
 //{
@@ -136,18 +209,23 @@ bool XMEM_erase_block(uint32_t addr)
 //    }
 //}
 
+#if 0
+
 bool XMEM_is_erased(uint32_t pos, size_t dim)
 {
     bool esito = true ;
 
     uint8_t * buf = soc_malloc(AT25SF041_WRITE_PAGE_BUFFER_SIZE) ;
     if (buf) {
-        const size_t NUM_BUF = dim / AT25SF041_WRITE_PAGE_BUFFER_SIZE ;
-        for (int i = 0 ; i < NUM_BUF && esito ;
+        const size_t NUM_BUF =
+            (dim + AT25SF041_WRITE_PAGE_BUFFER_SIZE - 1)
+            / AT25SF041_WRITE_PAGE_BUFFER_SIZE ;
+        for (size_t i = 0 ; i < NUM_BUF && esito ;
              ++i, pos += AT25SF041_WRITE_PAGE_BUFFER_SIZE) {
-            AT25_Read(pos, buf, AT25SF041_WRITE_PAGE_BUFFER_SIZE) ;
-            for (int j = 0 ; j < AT25SF041_WRITE_PAGE_BUFFER_SIZE ; ++j) {
-                if (buf[i] != 0xFF) {
+            const size_t DIM = MIN(dim, AT25SF041_WRITE_PAGE_BUFFER_SIZE) ;
+            AT25_Read(pos, buf, DIM) ;
+            for (size_t j = 0 ; j < DIM ; ++j) {
+                if (buf[j] != 0xFF) {
                     esito = false ;
                     break ;
                 }
@@ -158,6 +236,16 @@ bool XMEM_is_erased(uint32_t pos, size_t dim)
 
     return esito ;
 }
+
+#else
+
+// stesso tempo dell'altra con flash cancellata
+bool XMEM_is_erased(uint32_t pos, size_t dim)
+{
+    return AT25_is_erased(pos, dim) ;
+}
+
+#endif
 
 bool XMEM_read(uint32_t addr, void * v, size_t dim)
 {
@@ -177,7 +265,7 @@ bool XMEM_read(uint32_t addr, void * v, size_t dim)
 
 static size_t at25_write(uint32_t addr, const void * v, size_t dim)
 {
-	size_t scritti = 0 ;
+    size_t scritti = 0 ;
 
     do {
         AT25_Write_Enable() ;
@@ -194,7 +282,7 @@ static size_t at25_write(uint32_t addr, const void * v, size_t dim)
         for (s = 0 ; s < MAX_PAGE_PROGRAMMING_MS ; ++s) {
             CyDelay(1) ;
 
-            uint8_t sr1 = AT25_Read_Status_Register_1() ;
+            sr1 = AT25_Read_Status_Register_1() ;
             if ( 0 == (sr1 & SR1_WIP) ) {
                 break ;
             }
@@ -239,28 +327,27 @@ bool XMEM_write(uint32_t addr, const void * v, size_t dim)
         }
 
         union {
-        	const void * v ;
-			const uint8_t * u ;
+            const void * v ;
+            const uint8_t * u ;
         } u = {
-        	.v = v
-        };
+            .v = v
+        } ;
 
         while (dim) {
-        	size_t scritti = at25_write(addr, u.v, dim) ;
-        	if (0 == scritti)
-        		break ;
-        	dim -= scritti ;
-        	u.u += scritti ;
-        	addr += scritti ;
+            size_t scritti = at25_write(addr, u.v, dim) ;
+            if (0 == scritti) {
+                break ;
+            }
+            dim -= scritti ;
+            u.u += scritti ;
+            addr += scritti ;
         }
 
         esito = 0 == dim ;
-
     } while (false) ;
 
     return esito ;
 }
-
 
 #if 0
 
@@ -311,8 +398,9 @@ void XMEM_test(void)
         }
 
         DBG_PUTS("\taltro giro") ;
-        for (size_t i = 0 ; i < AT25SF041_WRITE_PAGE_BUFFER_SIZE ; ++i)
+        for (size_t i = 0 ; i < AT25SF041_WRITE_PAGE_BUFFER_SIZE ; ++i) {
             bufs[i] += 1 ;
+        }
     }
 }
 
