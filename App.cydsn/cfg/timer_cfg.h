@@ -6,7 +6,7 @@
 
 // lista dei timer
 #define TIM_POW			0
-#define TIM_UCOL		1
+#define TIM_LED			1
 
 #define MAX_TIMER_SW    2
 

@@ -2,7 +2,7 @@
 <DesignWideResources xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://cypress.com/xsd/cydwr">
   <Group key="Component">
     <Group key="v1">
-      <Data key="cy_boot" value="cy_boot_v5_90" />
+      <Data key="cy_boot" value="cy_boot_v6_0" />
       <Data key="cy_dmac" value="cy_dmac_v1_10" />
       <Data key="cy_lfclk" value="cy_lfclk_v1_20" />
       <Data key="Em_EEPROM_Dynamic" value="Em_EEPROM_Dynamic_v2_20" />
@@ -41,6 +41,7 @@
       <Data key="81b15105-8191-4530-adcb-6d8147cb96f7" value="SDA" />
       <Data key="090b12fb-9e02-4ff7-a8bd-72b1e1464435" value="VERDE" />
       <Data key="4071a428-b100-4f5b-83eb-57822fd75355" value="VENTOZO" />
+      <Data key="064613c4-db7a-453f-b941-379e726ec2ea" value="BLU_NEG" />
       <Data key="1425177d-0d0e-4468-8bcc-e638e5509a9b" value="Rx_1" />
       <Data key="77715107-f8d5-47e5-a629-0fb83101ac6b" value="c_ozono" />
       <Data key="a7ad1c08-4665-438c-870f-48f5432aa9a2/78e33e5d-45ea-4b75-88d5-73274e8a7ce4" value="USO_rx" />
@@ -51,11 +52,12 @@
       <Data key="cbbb6382-80c1-4aaa-969b-cd4c6b887c3e" value="VENTOSS" />
       <Data key="dceb1a8e-2b2b-4782-aadc-85e4656232e8" value="OZONO" />
       <Data key="df39f835-f7d0-4955-b9d1-d8d4a82b1d3b" value="SPI_MISO" />
-      <Data key="e851a3b9-efb8-48be-bbb8-b303b216c393" value="ROSSO" />
+      <Data key="e851a3b9-efb8-48be-bbb8-b303b216c393" value="ROSSO_NEG" />
       <Data key="e82811f5-cf01-470e-bb5d-e1f664821efb" value="ROSSO_NEG" />
       <Data key="ec291706-6305-46fa-8c65-060a903dcf19" value="Pin_O3_TX" />
       <Data key="ed092b9b-d398-4703-be89-cebf998501f6" value="Tx_1" />
       <Data key="f093233c-5ba9-429d-a1ea-2a9e6ede4ddf" value="VERDE_NEG" />
+      <Data key="fad0332e-83c3-4fa4-b8a9-3c3be0314c27" value="VERDE_NEG" />
     </Group>
   </Group>
   <Group key="FlashSecurity">
@@ -3788,6 +3790,11 @@
         <Data key="Port Format" value="1,3" />
       </Group>
     </Group>
+    <Group key="064613c4-db7a-453f-b941-379e726ec2ea">
+      <Group key="0">
+        <Data key="Port Format" value="3,7" />
+      </Group>
+    </Group>
     <Group key="1425177d-0d0e-4468-8bcc-e638e5509a9b">
       <Group key="0">
         <Data key="Port Format" value="0,4" />
@@ -3835,7 +3842,7 @@
     </Group>
     <Group key="e851a3b9-efb8-48be-bbb8-b303b216c393">
       <Group key="0">
-        <Data key="Port Format" value="2,4" />
+        <Data key="Port Format" value="2,6" />
       </Group>
     </Group>
     <Group key="e82811f5-cf01-470e-bb5d-e1f664821efb">
@@ -3856,6 +3863,11 @@
     <Group key="f093233c-5ba9-429d-a1ea-2a9e6ede4ddf">
       <Group key="0">
         <Data key="Port Format" value="3,3" />
+      </Group>
+    </Group>
+    <Group key="fad0332e-83c3-4fa4-b8a9-3c3be0314c27">
+      <Group key="0">
+        <Data key="Port Format" value="3,6" />
       </Group>
     </Group>
     <Group key="UnAssigned Pins">
