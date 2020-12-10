@@ -87,11 +87,10 @@ void wdt_adv_inviato(void)
         DBG_QUA ;
         disa_timer2() ;
     }
-#if defined(WDOG_SW_ABIL) || (MAX_WDTIMER_SW > 0)
+
     if (wa_abil) {
         timer_lento_isr() ;
     }
-#endif
 }
 
 void wdt_adv_fine(void)
@@ -230,7 +229,6 @@ static void wdt_spegni(void)
 void WDOG_stop(int quale)
 {
     DYN_ASSERT( 0 == __get_IPSR() ) ;
-#if MAX_WDTIMER_SW > 0
     ASSERT(quale < MAX_WDTIMER_SW) ;
 
     if (quale < MAX_WDTIMER_SW) {
@@ -238,9 +236,6 @@ void WDOG_stop(int quale)
     }
 
     wdt_spegni() ;
-#else
-    UNUSED(quale) ;
-#endif
 }
 
 bool WDOG_running(int quale)

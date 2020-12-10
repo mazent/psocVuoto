@@ -92,7 +92,7 @@ static void ble_connect(bool conn)
 
 static void ble_authfail(void)
 {
-    if (NULL == pCB) {
+    if (NULL == pCB) {	// NOLINT(bugprone-branch-clone)
     }
     else if (NULL == pCB->authfail) {
     }
@@ -117,7 +117,7 @@ static void notif_esito(bool esito)
 
 static void notifica(void)
 {
-    if (NULL == pNTF) {
+    if (NULL == pNTF) {	// NOLINT(bugprone-branch-clone)
         // Ottimo
     }
     else if ( CYBLE_STACK_STATE_BUSY == CyBle_GattGetBusyStatus() ) {
@@ -1541,7 +1541,7 @@ bool BLE_clock(void)
     bool esito = false ;
     CYBLE_BLESS_STATE_T blePower = CyBle_GetBleSsState() ;
 
-    if (0 == blePower) {
+    if (0 == blePower) {	// NOLINT(bugprone-branch-clone)
         // Mai inizializzato
     }
     else if ( (blePower == CYBLE_BLESS_STATE_DEEPSLEEP ||

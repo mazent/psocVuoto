@@ -120,7 +120,7 @@ static void esamina_blocco(uint8_t * set_lib, BLK_T blk)
             }
             else {
                 // Valido!
-                if (LRU_LIBERO == vLog[pF->lgc].lru) {
+                if (LRU_LIBERO == vLog[pF->lgc].lru) { // NOLINT(bugprone-branch-clone)
                     // Prima volta
 //                  DBG_PRINTF("\t %d: primo %d", fis, pF->lgc) ;
                     vLog[pF->lgc].lru = pF->lru ;
@@ -419,7 +419,8 @@ bool FTL_iniz(const FTL_OP * op)
         esito = true ;
 
         // Come sono messo?
-        if ( (FTL_FSECT_NUM == LIB_1) && (FTL_FSECT_NUM == LIB_2) ) {
+        if ( (FTL_FSECT_NUM == LIB_1)
+        	  && (FTL_FSECT_NUM == LIB_2) ) {	// NOLINT(bugprone-branch-clone)
             // Entrambi vuoti
             blkCorr = FTL_BLK_1 ;
         }

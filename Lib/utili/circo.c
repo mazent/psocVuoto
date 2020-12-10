@@ -224,7 +224,7 @@ uint16_t CIRCO_est2(S_CIRCO * pC, uint8_t finoa, uint8_t * dati, uint16_t dim)
                 letti += DIM ;
 
                 // fino a ?
-                int diff = (uint8_t *) fa - pC->buf ;
+                ptrdiff_t diff = ((uint8_t *) fa) - pC->buf ;
 
                 letti += diff ;
                 memcpy(dati, pC->buf, diff) ;

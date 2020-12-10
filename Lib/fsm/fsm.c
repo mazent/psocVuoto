@@ -239,7 +239,7 @@ fsm_get_state(fsm_t * fsm, uint32_t * p2state)
 
 static void forza_stato(fsm_t * fsm, uint32_t stato)
 {
-    if (NULL == fsm) {
+    if (NULL == fsm) {	// NOLINT(bugprone-branch-clone)
     }
     else if (fsm->tag != FSM_TAG) {
     }
