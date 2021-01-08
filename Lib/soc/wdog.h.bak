@@ -11,9 +11,6 @@
 // se serve, invocarla anche in altri loop
 void WDOG_calcia(void) ;
 
-// Causa un wdog reset
-void WDOG_reset(void);
-
 // Watchdog software (definire WDOG_SW_ABIL)
 // --------------------------
 

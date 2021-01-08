@@ -382,27 +382,6 @@ void WDOG_calcia(void)
 #endif
 }
 
-void WDOG_reset(void)
-{
-	CySysWdtDisable(CY_SYS_WDT_COUNTER0_MASK | CY_SYS_WDT_COUNTER1_MASK);
-
-    DBG_PUTS(__func__);
-
-	// [Ri]Programmo: 1 ms
-    CySysWdtWriteMode(CY_SYS_WDT_COUNTER0, CY_SYS_WDT_MODE_NONE) ;
-    CySysWdtWriteMatch(CY_SYS_WDT_COUNTER0, 32) ;
-    CySysWdtWriteClearOnMatch(CY_SYS_WDT_COUNTER0, 1) ;
-    CySysWdtWriteCascade(CY_SYS_WDT_CASCADE_01) ;
-
-    CySysWdtWriteMode(CY_SYS_WDT_COUNTER1, CY_SYS_WDT_MODE_RESET) ;
-    CySysWdtWriteMatch(CY_SYS_WDT_COUNTER1, 1) ;
-    CySysWdtWriteClearOnMatch(CY_SYS_WDT_COUNTER1, 1) ;
-
-    CySysWdtEnable(CY_SYS_WDT_COUNTER0_MASK | CY_SYS_WDT_COUNTER1_MASK) ;
-
-    while(true);
-}
-
 void WDOG_wds(uint16_t secondi)
 {
 #if WDOG_SW_ABIL

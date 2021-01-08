@@ -42,7 +42,16 @@ static void hard_fault(void)
     DBG_PUTS("! HARD FAULT !") ;
     CyDelay(2) ;
 #ifdef NDEBUG
-    WDOG_reset();
+    uint32 modo = CySysWdtGetMode(CY_SYS_WDT_COUNTER1) ;
+    if (CY_SYS_WDT_MODE_RESET == modo) {
+        // Aspetto che scatti il wdog
+        while (true) {
+            CyHalt(0) ;
+        }
+    }
+    else {
+        CySoftwareReset() ;
+    }
 #else
     __BKPT(0) ;
 #endif
