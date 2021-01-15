@@ -1,6 +1,9 @@
 #ifndef BLE_CFG_H_
 #define BLE_CFG_H_
 
+// Se definita, accende e spegne ECO
+//#define BLE_CLOCK		1
+
 // Se definita, abilita il cambio nome
 // La dimensione deve essere quella dei 'gap settings' (altrimenti viene tagliato)
 // (senza lo 0 finale)

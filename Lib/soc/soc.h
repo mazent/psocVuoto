@@ -40,9 +40,6 @@ static inline void SOC_apc(int a, PF_SOC_APC b)
 
 bool SOC_apc_attiva(int) ;
 
-// Si parte veloci
-void SOC_sysclk(bool high) ;
-
 // Power management della cpu
 void SOC_min(RICH_CPU) ;
 

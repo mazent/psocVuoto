@@ -251,28 +251,6 @@ void SOC_min(RICH_CPU cpu)
     cpu_rt = cpu ;
 }
 
-void SOC_sysclk(bool high)
-{
-#if defined(SOC_SYSCLK_HIGH) && defined(SOC_SYSCLK_LOW)
-    static bool alta = true ;
-
-    if (high != alta) {
-        uint32_t div = SOC_SYSCLK_LOW ;
-        if (alta) {
-            div = SOC_SYSCLK_HIGH ;
-        }
-
-        CySysClkWriteSysclkDiv(div) ;
-
-        timer_reini() ;
-
-        alta = high ;
-    }
-#else
-    UNUSED(high) ;
-#endif
-}
-
 void SOC_spegni(void)
 {
 #if SOC_SPEGNI == 0

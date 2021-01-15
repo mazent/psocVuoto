@@ -31,9 +31,56 @@ typedef struct {
 
 static UN_TIMER lista_timer[MAX_TIMER_SW] ;
 
+/*
+ * I timer sono realizzate grazie al systick
+ */
+
 static void tick_isr(void)
 {
     tick = true ;
+}
+
+static void disab_tick(void)
+{
+    CySysTickDisableInterrupt() ;
+    CySysTickStop() ;
+
+    tick_attivo = false ;
+}
+
+static void abil_tick(void)
+{
+    CySysTickClear() ;
+    CySysTickEnable() ;
+
+    tick_attivo = true ;
+}
+
+static void iniz_tick(void)
+{
+    // Inizializzo (tick = 1ms)
+    CySysTickStart() ;
+
+    // Fermo e modifico
+    disab_tick() ;
+
+    // L'interruzione non e' scattata
+    tick = false ;
+
+    // La servo io
+    (void) CyIntSetSysVector(CY_INT_SYSTICK_IRQN, tick_isr) ;
+
+#ifdef MILLI_PER_TICK
+    // Cambio il periodo
+    uint32_t rel = CySysTickGetReload() ;
+    rel *= MILLI_PER_TICK ;
+    CySysTickSetReload(rel) ;
+#endif
+
+#ifdef DISAB_TICK
+#else
+    abil_tick() ;
+#endif
 }
 
 bool timer_attivi(void)
@@ -102,11 +149,7 @@ void timer_start_arg(int quale, uint32_t ms, void * v)
         lista_timer[quale].val = TS_SCADUTO - ttick ;
 #ifdef DISAB_TICK
         if (!tick_attivo) {
-            DBG_PUTS("Abilito tick") ;
-            CySysTickClear() ;
-            CySysTickEnable() ;
-
-            tick_attivo = true ;
+            abil_tick() ;
         }
 #endif
         LEAVE_CRITICAL_SECTION ;
@@ -152,51 +195,7 @@ void timer_ini(void)
         lista_timer[t].cb = NULL ;
     }
 
-    // Inizializzo (tick = 1ms)
-    CySysTickStart() ;
-
-    // Fermo e modifico
-    CySysTickStop() ;
-
-    // Comunque uso il mio
-    (void) CyIntSetSysVector(CY_INT_SYSTICK_IRQN, tick_isr) ;
-
-    // L'interruzione non e' scattata
-    tick = false ;
-
-#ifdef MILLI_PER_TICK
-    // Cambio il periodo
-    uint32_t rel = CySysTickGetReload() ;
-    rel *= MILLI_PER_TICK ;
-    CySysTickSetReload(rel) ;
-#endif
-
-#ifdef DISAB_TICK
-    // Per ora non mi serve il tick
-    tick_attivo = false ;
-#else
-    CySysTickClear() ;
-    CySysTickEnable() ;
-
-    tick_attivo = true ;
-#endif
-}
-
-// Se cambia il clock
-
-void timer_reini(void)
-{
-#ifdef MILLI_PER_TICK
-    // Cambio il periodo
-    uint32_t rel = CySysTickGetReload() ;
-    rel *= MILLI_PER_TICK ;
-    CySysTickSetReload(rel) ;
-#endif
-
-    if (tick_attivo) {
-        CySysTickClear() ;
-        CySysTickEnable() ;
-    }
+    iniz_tick() ;
 }
 
 // Invocare periodicamente
@@ -204,6 +203,7 @@ void timer_reini(void)
 void timer_run(void)
 {
     if (tick) {
+        // E' scattata l'interruzione
         PF_TIMER_SW funzioni[MAX_TIMER_SW] = {
             NULL
         } ;
@@ -244,9 +244,7 @@ void timer_run(void)
 #ifdef DISAB_TICK
         // E adesso?
         if ( !timer_attivi() ) {
-            DBG_PUTS("Disabilito tick") ;
-            CySysTickStop() ;
-            tick_attivo = false ;
+            disab_tick() ;
         }
 #endif
     }

@@ -898,12 +898,14 @@ void BLE_start(const BLE_CB * cb)
         DBG_PUTS("ble start") ;
 
         pCB = cb ;
-
-//		// Attivo il clock
-//		CySysClkEcoStart(2000) ;
-//		while (0 == CySysClkEcoReadStatus())
-//			CyDelayUs(100) ;
-
+#ifdef BLE_CLOCK
+		// Attivo il clock
+		CySysClkEcoStart(2000) ;
+		while (0 == CySysClkEcoReadStatus()){
+			DBG_ERR;
+			CyDelay(1) ;
+		}
+#endif
         bt_on = true ;
         connesso = false ;
         advertising = false ;
@@ -957,9 +959,9 @@ bool BLE_rand(uint8_t * nc)
 
 void BLE_stop(void)
 {
-    if (bt_on) {
         DBG_PUTS("ble stop") ;
 
+    if (bt_on) {
         if (connesso) {
             if ( CYBLE_ERROR_OK ==
                  CyBle_GapDisconnect(cyBle_connHandle.bdHandle) ) {
@@ -985,10 +987,12 @@ void BLE_stop(void)
 
         pCfg = NULL ;
         numCfg = 0 ;
-
-        // Non serve piu'
-        //CySysClkEcoStop() ;
     }
+
+#ifdef BLE_CLOCK
+        // Non serve piu'
+    CySysClkEcoStop() ;
+#endif
 }
 
 bool BLE_agg_char(uint16_t charh, bool locale, const void * dati, uint16_t dim)
@@ -1491,6 +1495,9 @@ bool BLE_indicate(const S_BLE_IND * x)
 
 void BLE_run(void)
 {
+    if (!bt_on) {
+        return ;
+    }
     /***********************************************************************
     *  Process all BLE events in the stack
     ***********************************************************************/
@@ -1541,8 +1548,8 @@ bool BLE_clock(void)
     bool esito = false ;
     CYBLE_BLESS_STATE_T blePower = CyBle_GetBleSsState() ;
 
-    if (0 == blePower) {	// NOLINT(bugprone-branch-clone)
-        // Mai inizializzato
+	if ( (0 == blePower) || (CYBLE_BLESS_STATE_INVALID == blePower) ) {
+		// Mai inizializzato o spento
     }
     else if ( (blePower == CYBLE_BLESS_STATE_DEEPSLEEP ||
                blePower == CYBLE_BLESS_STATE_ECO_ON) ) {
