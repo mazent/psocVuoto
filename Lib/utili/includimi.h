@@ -23,6 +23,13 @@
 // (come la .noinit, per cui non si puo' inizializzare)
 // Le dimensioni di stack e heap si possono modificare
 // solo dentro cm0gcc.ld
+// Esempio d'uso
+//     #ifdef CY_BOOTLOADABLE_Bootloadable_H
+//     static NOMANSLAND tipo variabile ;
+//     #else
+//     static CY_NOINIT tipo variabile ;
+//     #endif
+
 #define NOMANSLAND		CY_SECTION(".nml")
 
 // Utili

@@ -30,7 +30,10 @@ void BLE_config(const BLE_WRITE_CFG *, const size_t) ;
 // Gli advertisement NON sono attivi
 typedef void (*CB_BLE_ATTIVO)(void) ;
 
-// Invocata alla [dis]connessione
+// Invocata:
+//     ! BLE_AUTEN: connessione
+//       BLE_AUTEN: autenticazione
+//     sconnessione
 // Alla sconnessione gli advertisement NON sono attivi
 typedef void (*CB_BLE_CONNECT)(bool) ;
 

@@ -35,7 +35,12 @@ typedef struct {
     void * arg ;
 } UNA_APC ;
 
-static UNA_APC vAPC[MAX_SOC_APC] ;
+#ifdef MAX_NUM_APC
+#   define MAX_BUFF        MAX_NUM_APC
+#else
+#   define MAX_BUFF        MAX_SOC_APC
+#endif
+static UNA_APC vAPC[MAX_BUFF] ;
 
 static void hard_fault(void)
 {
@@ -176,8 +181,10 @@ static void soc_ini(void)
     iniz_malloc() ;
 
     timer_ini() ;
-
-    for (int i = 0 ; i < MAX_SOC_APC ; i++) {
+#ifdef MAX_NUM_APC
+    static_assert(MAX_NUM_APC > MAX_SOC_APC, "OKKIO") ;
+#endif
+    for ( int i = 0 ; i < MAX_BUFF ; i++ ) {
         vAPC[i].apc = NULL ;
         vAPC[i].arg = NULL ;
     }
@@ -189,28 +196,54 @@ void SOC_apc_arg(int quale, PF_SOC_APC cb, void * arg)
     DYN_ASSERT( 0 == __get_IPSR() ) ;
 
     if (quale < MAX_SOC_APC) {
+#ifndef MAX_NUM_APC
+        ASSERT(NULL == vAPC[quale].apc) ;
         vAPC[quale].apc = cb ;
         vAPC[quale].arg = arg ;
+#else
+        if ( NULL == vAPC[quale].apc ) {
+            // Ottimo
+            vAPC[quale].apc = cb ;
+            vAPC[quale].arg = arg ;
+        }
+        else {
+            // Ne cerco una fra quelle in piu'
+            int libera ;
+
+            for ( libera = MAX_SOC_APC ; libera < MAX_NUM_APC ; ++libera ) {
+                if ( NULL == vAPC[libera].apc ) {
+                    break ;
+                }
+            }
+
+            ASSERT(libera < MAX_NUM_APC) ;
+
+            if ( libera < MAX_NUM_APC ) {
+                vAPC[libera].apc = cb ;
+                vAPC[libera].arg = arg ;
+            }
+        }
+#endif
     }
 }
 
 bool SOC_apc_attiva(int quale)
 {
     bool esito = false ;
-
+#ifndef MAX_NUM_APC
     ASSERT(quale < MAX_SOC_APC) ;
     DYN_ASSERT( 0 == __get_IPSR() ) ;
 
     if (quale < MAX_SOC_APC) {
         esito = NULL != vAPC[quale].apc ;
     }
-
+#endif
     return esito ;
 }
 
 static void soc_run(void)
 {
-    for (int i = 0 ; i < MAX_SOC_APC ; i++) {
+    for ( int i = 0 ; i < MAX_BUFF ; i++ ) {
         PF_SOC_APC apc = vAPC[i].apc ;
 
         if (apc) {
@@ -232,7 +265,7 @@ static RICH_CPU soc_cpu(void)
 {
     RICH_CPU s = MIN(cpu_rt, CPU_CT) ;
 
-    for (int i = 0 ; i < MAX_SOC_APC ; i++) {
+    for ( int i = 0 ; i < MAX_BUFF ; i++ ) {
         if ( vAPC[i].apc ) {
             s = CPU_ATTIVA ;
             break ;

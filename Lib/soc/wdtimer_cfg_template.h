@@ -1,6 +1,11 @@
 #ifndef WDTIMER_CFG_H_
 #define WDTIMER_CFG_H_
 
+// L'interruzione capita quando commuta il bit
+// 15 -> 1 secondo
+#define WDOG_TOGGLE_BIT      15
+
+
 /*
  * Se non c'e' attivita', p.e. bt spento e nessun timer (lento o veloce)
  * attivo, il wdog puo' resettare: per evitare definire WDOG_TICK

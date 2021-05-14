@@ -20,7 +20,7 @@ RICH_CPU BLE_cpu(void) ;
 #define SOC_CTRL_STACK      1
 
 // Come mi spengo (si riparte da reset, ram valida solo in hib)
-#define SOC_SPEGNI_STOP     1	// CySysPmStop
+#define SOC_SPEGNI_STOP     1	// CySysPmStop (risveglio da 2[2])
 #define SOC_SPEGNI_HIB      2	// CySysPmHibernate
 // make sure that there are no unexpected GPIO transitions during and after
 // reset
@@ -30,5 +30,9 @@ RICH_CPU BLE_cpu(void) ;
 
 // lista delle apc
 #define MAX_SOC_APC     0
+
+// se definito e una apc e' gia' in corso,
+// se ne cerca una libera fra quelle in piu'
+//#define MAX_NUM_APC     0
 
 #endif

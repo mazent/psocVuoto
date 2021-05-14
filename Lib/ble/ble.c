@@ -619,7 +619,7 @@ static void bt_evn(uint32 event, void * eventParam)
     case CYBLE_EVT_GATTS_WRITE_REQ: {
             /* This event is generated when the connected Central device sends a
              * Write request. The parameter contains the data written */
-            DBG_PUTS("CYBLE_EVT_GATTS_WRITE_REQ") ;
+            //DBG_PUTS("CYBLE_EVT_GATTS_WRITE_REQ") ;
 
             /* Extract the Write data sent by Client */
             CYBLE_GATTS_WRITE_REQ_PARAM_T * wrReqParam =
@@ -695,7 +695,15 @@ static void bt_evn(uint32 event, void * eventParam)
 //        break ;
 
     case CYBLE_EVT_GAP_DEVICE_CONNECTED:
-        DBG_PUTS("CYBLE_EVT_GAP_DEVICE_CONNECTED") ;
+//        DBG_PUTS("CYBLE_EVT_GAP_DEVICE_CONNECTED") ;
+//        {
+//            CYBLE_GAP_CONN_PARAM_UPDATED_IN_CONTROLLER_T * prm =
+//                (CYBLE_GAP_CONN_PARAM_UPDATED_IN_CONTROLLER_T *) eventParam ;
+//            DBG_PRINTF("\t status        0x%02X", prm->status) ;
+//            DBG_PRINTF("\t connIntv      0x%04X", prm->connIntv) ;
+//            DBG_PRINTF("\t connLatency   0x%04X", prm->connLatency) ;
+//            DBG_PRINTF("\t supervisionTO 0x%04X", prm->supervisionTO) ;
+//        }
         advertising = false ;
         {
             CYBLE_GAP_CONN_PARAM_UPDATED_IN_CONTROLLER_T * prm =
@@ -1112,11 +1120,11 @@ bool BLE_servizi(const BLE_SRV * vSrv, size_t dim)
         CYBLE_GATT_ERR_CODE_T err ;
 
         if (vSrv[i].abil) {
-            DBG_PRINTF("abilito srv %04X", h) ;
+            //DBG_PRINTF("abilito srv %04X", h) ;
             err = CyBle_GattsEnableAttribute(h) ;
         }
         else {
-            DBG_PRINTF("DISabilito srv %04X", h) ;
+            //DBG_PRINTF("DISabilito srv %04X", h) ;
             err = CyBle_GattsDisableAttribute(h) ;
         }
 
@@ -1161,10 +1169,10 @@ bool BLE_servizi(const BLE_SRV * vSrv, size_t dim)
 #endif
         handleValuePair.attrHandle = cyBle_gatts.serviceChangedHandle ;
 
-        DBG_PRINTF("scrivo %04X", handleValuePair.attrHandle) ;
-        DBG_PRINT_HEX("\t",
-                      handleValuePair.value.val,
-                      handleValuePair.value.len) ;
+//        DBG_PRINTF("scrivo %04X", handleValuePair.attrHandle) ;
+//        DBG_PRINT_HEX("\t",
+//                      handleValuePair.value.val,
+//                      handleValuePair.value.len) ;
 
         CYBLE_GATT_ERR_CODE_T err = CyBle_GattsWriteAttributeValue(
             &handleValuePair,
@@ -1180,7 +1188,7 @@ bool BLE_servizi(const BLE_SRV * vSrv, size_t dim)
         }
         else {
             // https://community.cypress.com/message/238346
-            DBG_PUTS("indico") ;
+//            DBG_PUTS("indico") ;
             CYBLE_API_RESULT_T res = CyBle_GattsIndication(cyBle_connHandle,
                                                            &handleValuePair) ;
             if (CYBLE_ERROR_OK != res) {
@@ -1311,7 +1319,7 @@ void BLE_sconnetti(void)
         DBG_ERR ;
     }
     else if (!connesso) {
-        DBG_ERR ;
+        DBG_QUA ;
     }
     else {
         DBG_PUTS("BLE_sconnetti") ;

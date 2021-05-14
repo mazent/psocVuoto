@@ -26,6 +26,9 @@ void WDOG_wds(uint16_t secondi);
 // Timer "lenti"
 // --------------------------
 
+// Restituisce la risoluzione in secondi
+uint32_t WDOG_tick_in_s(void);
+
 // Callback invocata quando scade il tempo impostato
 typedef void (* PF_WDTIMER_SW)(void) ;
 

@@ -15,16 +15,11 @@
 // Watchdog (counter 0 e 1)
 // Due secondi - 1
 #define WDT_COUNT0_MATCH    65535
-// Dieci secondi
+// Moltiplicato questo:
 #define WDT_COUNT1_MATCH    10
 
 // Timer lenti (counter 2)
-// L'interruzione capita quando commuta il bit
-// 32768 ...
-#define TOGGLE_BIT      15
-// ... un secondo
-#define PERIODO         (1 << TOGGLE_BIT)
-// ... 1
+#define PERIODO         (1 << WDOG_TOGGLE_BIT)
 #define PERIODO_S       (PERIODO / WDOG_UN_SECONDO)
 
 #define UN_SECONDO_MS       1000
@@ -38,7 +33,7 @@ static void timer_lento_isr(void) ;
 static void iniz_timer2(void)
 {
     CySysWdtWriteMode(CY_SYS_WDT_COUNTER2, CY_SYS_WDT_MODE_INT) ;
-    CySysWdtSetToggleBit(TOGGLE_BIT) ;
+    CySysWdtSetToggleBit(WDOG_TOGGLE_BIT) ;
 }
 
 static void abil_timer2(void)
@@ -171,7 +166,14 @@ typedef struct {
 
 static UN_TIMER lista_timer[MAX_WDTIMER_SW] ;
 
-void WDOG_setcb(int quale, PF_WDTIMER_SW cb)
+uint32_t WDOG_tick_in_s(void)
+{
+    return PERIODO_S ;
+}
+
+void WDOG_setcb(
+    int quale,
+    PF_WDTIMER_SW cb)
 {
     ASSERT(quale < MAX_WDTIMER_SW) ;
     DYN_ASSERT( 0 == __get_IPSR() ) ;
@@ -400,7 +402,7 @@ void WDOG_reset(void)
 
     CySysWdtEnable(CY_SYS_WDT_COUNTER0_MASK | CY_SYS_WDT_COUNTER1_MASK) ;
 
-    while(true);
+    while ( true ) {}
 }
 
 void WDOG_wds(uint16_t secondi)
@@ -431,7 +433,11 @@ void wdog_iniz(void)
 }
 
 void WDOG_calcia(void)
+{}
+
+uint32_t WDOG_tick_in_s(void)
 {
+    return 0 ;
 }
 
 void WDOG_setcb(int a, PF_WDTIMER_SW b)
