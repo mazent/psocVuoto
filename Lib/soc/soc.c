@@ -5,10 +5,6 @@
 #   define SOC_SPEGNI   0
 #endif
 
-#ifdef DBG_ABIL
-#   define DBG_MALLOC       1
-#endif
-
 extern void timer_ini(void) ;
 extern void timer_reini(void) ;
 extern void timer_run(void) ;
@@ -47,138 +43,35 @@ static void hard_fault(void)
     DBG_PUTS("! HARD FAULT !") ;
     CyDelay(2) ;
 #ifdef NDEBUG
-    WDOG_reset();
+    WDOG_reset() ;
 #else
     __BKPT(0) ;
 #endif
 }
 
-#ifdef DBG_MALLOC
-
-static size_t tot = 0 ;
-typedef struct {
-    void * v ;
-    size_t d ;
-} UN_MALLOC ;
-#define NUM_MALLOC      10
-static UN_MALLOC vM[NUM_MALLOC] ;
-
-static void iniz_malloc(void)
-{
-    for (int i = 0 ; i < NUM_MALLOC ; ++i) {
-        vM[i].v = NULL ;
-    }
-}
-
-void * soc_malloc(size_t dim)
-{
-    void * v = malloc(dim) ;
-
-    if (v) {
-        tot += dim ;
-
-        int i = 0 ;
-        for ( ; i < NUM_MALLOC ; ++i) {
-            if (NULL == vM[i].v) {
-                vM[i].v = v ;
-                vM[i].d = dim ;
-                break ;
-            }
-        }
-        if (NUM_MALLOC == i) {
-            DBG_ERR ;
-        }
-
-        DBG_PRINTF("%p = %s(%d) -> %d", v, __func__, dim, tot) ;
-    }
-    else {
-        DBG_ERR ;
-    }
-
-    return v ;
-}
-
-void * soc_calloc(size_t num, size_t size)
-{
-    void * v = calloc(num, size) ;
-
-    if (v) {
-        size_t dim = num * size ;
-        tot += dim ;
-
-        int i = 0 ;
-        for ( ; i < NUM_MALLOC ; ++i) {
-            if (NULL == vM[i].v) {
-                vM[i].v = v ;
-                vM[i].d = dim ;
-                break ;
-            }
-        }
-        if (NUM_MALLOC == i) {
-            DBG_ERR ;
-        }
-
-        DBG_PRINTF("%p = %s(%d) -> %d", v, __func__, dim, tot) ;
-    }
-    else {
-        DBG_ERR ;
-    }
-
-    return v ;
-}
-
-void soc_free(void * v)
-{
-    if (v) {
-        int i = 0 ;
-        for ( ; i < NUM_MALLOC ; ++i) {
-            if (v == vM[i].v) {
-                tot -= vM[i].d ;
-                vM[i].v = NULL ;
-                free(v) ;
-                DBG_PRINTF("%s(%p) -%d -> %d", __func__, v, vM[i].d, tot) ;
-                break ;
-            }
-        }
-
-        if (NUM_MALLOC == i) {
-            DBG_ERR ;
-            DBG_PRINTF("\t ? %s(%p) ?", __func__, v) ;
-        }
-    }
-}
-
-#else
-
-static void iniz_malloc(void)
-{
-}
-
-void * soc_malloc(size_t dim)
+void * SOC_malloc(size_t dim)
 {
     return malloc(dim) ;
 }
 
-void * soc_calloc(size_t num, size_t size)
+void * SOC_calloc(
+    size_t num,
+    size_t size)
 {
     return calloc(num, size) ;
 }
 
-void soc_free(void * v)
+void SOC_free(void * v)
 {
-    if (v) {
+    if ( v ) {
         free(v) ;
     }
 }
-
-#endif
 
 static void soc_ini(void)
 {
     // sostituisco while(1) con un bel reset
     (void) CyIntSetSysVector(CY_INT_HARD_FAULT_IRQN, hard_fault) ;
-
-    iniz_malloc() ;
 
     timer_ini() ;
 #ifdef MAX_NUM_APC
@@ -190,14 +83,21 @@ static void soc_ini(void)
     }
 }
 
-void SOC_apc_arg(int quale, PF_SOC_APC cb, void * arg)
+void SOC_apc_arg(
+    int quale,
+    PF_SOC_APC cb,
+    void * arg)
 {
-    ASSERT(quale < MAX_SOC_APC) ;
     DYN_ASSERT( 0 == __get_IPSR() ) ;
+    ASSERT(quale < MAX_SOC_APC) ;
 
-    if (quale < MAX_SOC_APC) {
+    if ( quale < MAX_SOC_APC ) {
 #ifndef MAX_NUM_APC
-        ASSERT(NULL == vAPC[quale].apc) ;
+#   ifdef DBG_ABIL
+        if ( NULL != vAPC[quale].apc ) {
+            DBG_PRINTF("apcocc %d", quale) ;
+        }
+#   endif
         vAPC[quale].apc = cb ;
         vAPC[quale].arg = arg ;
 #else
@@ -216,12 +116,15 @@ void SOC_apc_arg(int quale, PF_SOC_APC cb, void * arg)
                 }
             }
 
-            ASSERT(libera < MAX_NUM_APC) ;
-
             if ( libera < MAX_NUM_APC ) {
                 vAPC[libera].apc = cb ;
                 vAPC[libera].arg = arg ;
             }
+#   ifdef DBG_ABIL
+            else {
+                DBG_PRINTF("apcocc %d", quale) ;
+            }
+#   endif
         }
 #endif
     }
@@ -234,9 +137,11 @@ bool SOC_apc_attiva(int quale)
     ASSERT(quale < MAX_SOC_APC) ;
     DYN_ASSERT( 0 == __get_IPSR() ) ;
 
-    if (quale < MAX_SOC_APC) {
+    if ( quale < MAX_SOC_APC ) {
         esito = NULL != vAPC[quale].apc ;
     }
+#else
+    UNUSED(quale) ;
 #endif
     return esito ;
 }
@@ -246,15 +151,15 @@ static void soc_run(void)
     for ( int i = 0 ; i < MAX_BUFF ; i++ ) {
         PF_SOC_APC apc = vAPC[i].apc ;
 
-        if (apc) {
+        if ( apc ) {
             void * arg = vAPC[i].arg ;
 
             vAPC[i].apc = NULL ;
             vAPC[i].arg = NULL ;
 
-            DBG_PRINTF("eseguo %p(%p)", apc, arg) ;
+//            DBG_PRINTF("eseguo %d", i) ;
             apc(arg) ;
-            DBG_PRINTF("fine exec %p(%p)", apc, arg) ;
+//            DBG_PRINTF("ougese %d", i) ;
         }
     }
 
@@ -281,6 +186,36 @@ static RICH_CPU soc_cpu(void)
 
 void SOC_min(RICH_CPU cpu)
 {
+#ifdef DBG_ABIL
+    if ( cpu_rt != cpu ) {
+        const char * p = NULL ;
+        switch ( cpu_rt ) {
+        case CPU_ATTIVA:
+            p = "CPU_ATTIVA" ;
+            break ;
+        case CPU_PAUSA:
+            p = "CPU_PAUSA" ;
+            break ;
+        case CPU_FERMA:
+            p = "CPU_FERMA" ;
+            break ;
+        }
+
+        const char * d = NULL ;
+        switch ( cpu ) {
+        case CPU_ATTIVA:
+            d = "CPU_ATTIVA" ;
+            break ;
+        case CPU_PAUSA:
+            d = "CPU_PAUSA" ;
+            break ;
+        case CPU_FERMA:
+            d = "CPU_FERMA" ;
+            break ;
+        }
+        DBG_PRINTF("%s -> %s", p, d) ;
+    }
+#endif
     cpu_rt = cpu ;
 }
 
@@ -354,7 +289,7 @@ static void fill_stack(void)
     // Riempio lo stack con un valore noto
     dimStack = (&__cy_stack - &__cy_heap_end) / sizeof(uint32_t) ;
     uint32_t * stack = valid_cast(&__cy_heap_end) ;
-    for (size_t i = 0 ; i < dimStack - 100 ; i++) {
+    for ( size_t i = 0 ; i < dimStack - 100 ; i++ ) {
         stack[i] = STACK_NON_USATO ;
     }
 }
@@ -364,8 +299,8 @@ static void iniz_stack(void)
     uint32_t * stack = valid_cast(&__cy_heap_end) ;
 
     // Inizializzo
-    for (size_t i = 0 ; i < dimStack ; ++i) {
-        if (stack[i] != STACK_NON_USATO) {
+    for ( size_t i = 0 ; i < dimStack ; ++i ) {
+        if ( stack[i] != STACK_NON_USATO ) {
             dimStack = i - 1 ;
             break ;
         }
@@ -380,12 +315,12 @@ static void runt_stack(void)
     bool modif = false ;
     uint32_t * stack = valid_cast(&__cy_heap_end) ;
 
-    while (stack[dimStack] != STACK_NON_USATO) {
+    while ( stack[dimStack] != STACK_NON_USATO ) {
         --dimStack ;
         modif = true ;
     }
 
-    if (modif) {
+    if ( modif ) {
         DBG_PRINTF( "stack unused = %d", dimStack * sizeof(uint32_t) ) ;
     }
 }
@@ -393,16 +328,13 @@ static void runt_stack(void)
 #else
 
 static void fill_stack(void)
-{
-}
+{}
 
 static void iniz_stack(void)
-{
-}
+{}
 
 static void runt_stack(void)
-{
-}
+{}
 
 #endif
 
@@ -414,10 +346,33 @@ E_CAUSA_RESET SOC_causa(void)
     return causa ;
 }
 
+bool SOC_isr(void)
+{
+    uint32_t ipsr = __get_IPSR() ;
+
+    return ipsr != 0 ;
+}
+
+void SOC_reset(void)
+{
+    CySysWdtDisable(
+        CY_SYS_WDT_COUNTER0_MASK | CY_SYS_WDT_COUNTER1_MASK
+        | CY_SYS_WDT_COUNTER2_MASK) ;
+    CyGlobalIntDisable ;
+
+    DBG_PUTS("CySoftwareReset") ;
+    CyDelay(2) ;
+
+    CySoftwareReset() ;
+}
+
 int main(void)
 {
     fill_stack() ;
 
+#if defined(SOC_DBG_MALLOC) && defined(NDEBUG)
+#   warning OKKIO
+#endif
     soc_accendi() ;
 
     // Eventuale hw
@@ -432,13 +387,13 @@ int main(void)
         CY_SYS_RESET_WDT | CY_SYS_RESET_PROTFAULT | CY_SYS_RESET_SW) ;
 #endif
     // Trasformo la causa prioritizzando
-    if (causa & CY_SYS_RESET_WDT) {
+    if ( causa & CY_SYS_RESET_WDT ) {
         causa = E_CR_WDT ;
     }
-    else if (causa & CY_SYS_RESET_PROTFAULT) {
+    else if ( causa & CY_SYS_RESET_PROTFAULT ) {
         causa = E_CR_PROTFAULT ;
     }
-    else if (causa & CY_SYS_RESET_SW) {
+    else if ( causa & CY_SYS_RESET_SW ) {
         causa = E_CR_SW ;
     }
     else {
@@ -461,7 +416,7 @@ int main(void)
 
     iniz_stack() ;
 
-    while (true) {
+    while ( true ) {
         runt_stack() ;
 
         // Avviso che va tutto bene
@@ -487,7 +442,7 @@ int main(void)
                     // non funziona
                     BLE_clock() ;
 #endif
-                if (eco) {
+                if ( eco ) {
                     /* change HF clock source from IMO to ECO, as IMO is not
                       required and can be stopped to save power */
                     CySysClkWriteHfclkDirect(CY_SYS_CLK_HFCLK_ECO) ;
@@ -496,9 +451,14 @@ int main(void)
                 }
 
                 /* put the CPU to sleep */
+#ifdef CY_PINS_DBG_VRD_H
+                DBG_VRD_Write(1) ;
+#endif
                 CySysPmSleep() ;
-
-                if (eco) {
+#ifdef CY_PINS_DBG_VRD_H
+                DBG_VRD_Write(0) ;
+#endif
+                if ( eco ) {
                     /* starts execution after waking up, start IMO */
                     CySysClkImoStart() ;
                     /* change HF clock source back to IMO */
@@ -512,7 +472,15 @@ int main(void)
             DBG_ENTER_DEEP ;
 
             // Dormo
+#ifdef CY_PINS_DBG_BLU_H
+            DBG_BLU_Write(1) ;
+            DBG_BLU_Sleep() ;
+#endif
             CySysPmDeepSleep() ;
+#ifdef CY_PINS_DBG_BLU_H
+            DBG_BLU_Wakeup() ;
+            DBG_BLU_Write(0) ;
+#endif
 
             // Riabilito
             DBG_LEAVE_DEEP ;
@@ -528,3 +496,25 @@ int main(void)
 
     return 0 ;
 }
+
+#ifdef CY_BOOT_INT_DEFAULT_HANDLER_ENOMEM_EXCEPTION_CALLBACK
+void CyBoot_IntDefaultHandler_Enomem_Exception_Callback(void)
+{
+    DBG_PUTS(__func__) ;
+    WDOG_reset() ;
+}
+
+#else
+#   warning OKKIO AL WHILE 1
+#endif
+
+#ifdef CY_BOOT_INT_DEFAULT_HANDLER_EXCEPTION_ENTRY_CALLBACK
+void CyBoot_IntDefaultHandler_Exception_EntryCallback(void)
+{
+    DBG_PUTS(__func__) ;
+    WDOG_reset() ;
+}
+
+#else
+#   warning OKKIO AL WHILE 1
+#endif

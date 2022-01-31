@@ -123,7 +123,11 @@ bool BLE_agg_char(uint16_t charh, bool locale, const void * dati, uint16_t dim) 
 // Abilitazione e disabilitazione servizi
 // Conviene mettere per primi quelli da disabilitare
 typedef struct {
+#ifdef CY_BLE_CYBLE_H
 	CYBLE_GATT_DB_ATTR_HANDLE_T h ;
+#else
+    uint16_t h ;
+#endif
 	bool abil ;
 } BLE_SRV ;
 bool BLE_servizi(const BLE_SRV *, size_t) ;

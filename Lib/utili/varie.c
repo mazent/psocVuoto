@@ -1,46 +1,55 @@
 #define STAMPA_DBG
 #include "includimi.h"
 
-bool v_strtol(long * p, const char * s, int base)
+#include "soc/soc.h"
+
+bool v_strtol(
+    long * p,
+    const char * s,
+    int base)
 {
     bool esito = false ;
 
     do {
-        if (NULL == p) {
+        if ( NULL == p ) {
             DBG_ERR ;
             break ;
         }
 
-        if (NULL == s) {
+        if ( NULL == s ) {
             DBG_ERR ;
             break ;
         }
 
         char * str_end = NULL ;
         long prog = strtol(s, &str_end, base) ;
-        if (str_end == s) {
+        if ( str_end == s ) {
             DBG_ERR ;
             break ;
         }
 
         *p = prog ;
         esito = true ;
-    } while (false) ;
+    } while ( false ) ;
 
     return esito ;
 }
 
 // https://cwe.mitre.org/data/definitions/120.html
 
-void copia_str(char * restrict dst, size_t bufsz, const char * restrict srg)
+void copia_str(
+    char * restrict dst,
+    size_t bufsz,
+    const char * restrict srg)
 {
     (void) snprintf(dst, bufsz, "%s", srg) ;
 }
 
-int stampa_str(char * restrict buffer,
-               size_t bufsz,
-               const char * restrict fmt,
-               ...)
+int stampa_str(
+    char * restrict buffer,
+    size_t bufsz,
+    const char * restrict fmt,
+    ...)
 {
     va_list args ;
 
@@ -51,4 +60,20 @@ int stampa_str(char * restrict buffer,
     va_end(args) ;
 
     return dim ;
+}
+
+char * v_strndup(
+    const char * srg,
+    size_t dim)
+{
+    if ( 0 == dim ) {
+        dim = strlen(srg) ;
+    }
+
+    char * dst = soc_malloc(dim + 1) ;
+    if ( dst ) {
+        copia_str(dst, dim + 1, srg) ;
+    }
+
+    return dst ;
 }

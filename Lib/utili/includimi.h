@@ -17,6 +17,12 @@
 // Scheda
 #include <project.h>
 
+// .625 =
+#define CONV_NUM    5
+#define CONV_DEN    8
+#define ADV_INT_MS      ( (CYBLE_FAST_ADV_INT_MIN * CONV_NUM) / CONV_DEN )
+
+
 #define SILICON_ID    (*(reg32 *) CYREG_SFLASH_SILICON_ID)
 
 // Usare una copia di cm0gcc.ld inserendo questa area fra heap e stack
@@ -37,6 +43,13 @@
 #define NOT(x)          ( ~(unsigned int) (x) )
 #define MIN(a, b)       ( (a) < (b) ? (a) : (b) )
 #define DIM_VETT(a)     ( sizeof(a) / sizeof(a)[0] )
+    // Conversione a stringa (token stringification)
+    //      #define foo 4
+    //      STRINGA(foo)  -> "foo"
+    //      STRINGA2(foo) -> "4"
+#define STRINGA(a)       #a
+#define STRINGA2(a)      STRINGA(a)
+
 
 // Se manca la define
 #define SIZEOF_MEMBER(STRUCT, MEMBER) sizeof(((STRUCT *)0)->MEMBER)
@@ -129,7 +142,7 @@ typedef enum {
 	} while (false)
 #endif
 
-#define ASSERT(x)		  \
+#define ASSERT(x)         \
 	do {                  \
         if ( !(x) ) {     \
             DBG_ASSERT ;  \

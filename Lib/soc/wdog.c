@@ -62,12 +62,6 @@ static volatile bool wa_adv = false ;
 // vera se serve il timer lento
 static bool wa_abil = false ;
 
-// .625 =
-#define CONV_NUM    5
-#define CONV_DEN    8
-
-#define ADV_INT_MS      ( (CYBLE_FAST_ADV_INT_MIN * CONV_NUM) / CONV_DEN )
-
 void wdt_adv_inviato(void)
 {
     // Solo fast
@@ -83,7 +77,7 @@ void wdt_adv_inviato(void)
         disa_timer2() ;
     }
 
-    if (wa_abil) {
+    if ( wa_abil ) {
         timer_lento_isr() ;
     }
 }
@@ -92,7 +86,7 @@ void wdt_adv_fine(void)
 {
     wa_adv = false ;
 
-    if (wa_abil) {
+    if ( wa_abil ) {
         DBG_QUA ;
         abil_timer2() ;
     }
@@ -102,7 +96,7 @@ static void abil_lento(void)
 {
     wa_abil = true ;
 
-    if (!wa_adv) {
+    if ( !wa_adv ) {
         abil_timer2() ;
     }
 }
@@ -111,7 +105,7 @@ static void disa_lento(void)
 {
     wa_abil = false ;
 
-    if (!wa_adv) {
+    if ( !wa_adv ) {
         disa_timer2() ;
     }
 }
@@ -127,8 +121,7 @@ static void disa_lento(void)
 
 // Il timer 2 non serve
 static void iniz_timer2(void)
-{
-}
+{}
 
 #endif
 
@@ -178,29 +171,31 @@ void WDOG_setcb(
     ASSERT(quale < MAX_WDTIMER_SW) ;
     DYN_ASSERT( 0 == __get_IPSR() ) ;
 
-    if (quale < MAX_WDTIMER_SW) {
+    if ( quale < MAX_WDTIMER_SW ) {
         lista_timer[quale].cb = cb ;
     }
 }
 
-void WDOG_start(int quale, uint32_t secondi)
+void WDOG_start(
+    int quale,
+    uint32_t secondi)
 {
     ASSERT(quale < MAX_WDTIMER_SW) ;
     ASSERT(secondi) ;
     DYN_ASSERT( 0 == __get_IPSR() ) ;
 
-    if (quale >= MAX_WDTIMER_SW) {
+    if ( quale >= MAX_WDTIMER_SW ) {
         DBG_ERR ;
     }
     else {
-        if (0 == secondi) {
+        if ( 0 == secondi ) {
             DBG_ERR ;
             secondi = 1 ;
         }
 
         uint32_t ticks = (secondi + PERIODO_S - 1) / PERIODO_S ;
 
-        if (ticks > TS_SCADUTO) {
+        if ( ticks > TS_SCADUTO ) {
             ticks = TS_SCADUTO ;
         }
 
@@ -214,13 +209,13 @@ static void wdt_spegni(void)
 {
     int conta = 0 ;
 
-    for (int t = 0 ; t < MAX_WDTIMER_SW ; t++) {
-        if (lista_timer[t].val != TS_SERVITO) {
+    for ( int t = 0 ; t < MAX_WDTIMER_SW ; t++ ) {
+        if ( lista_timer[t].val != TS_SERVITO ) {
             conta++ ;
         }
     }
 #ifndef WDOG_SW_ABIL
-    if (0 == conta) {
+    if ( 0 == conta ) {
 #else
     if ( (0 == conta) && (!wds_run) ) {
 #endif
@@ -233,7 +228,7 @@ void WDOG_stop(int quale)
     DYN_ASSERT( 0 == __get_IPSR() ) ;
     ASSERT(quale < MAX_WDTIMER_SW) ;
 
-    if (quale < MAX_WDTIMER_SW) {
+    if ( quale < MAX_WDTIMER_SW ) {
         lista_timer[quale].val = TS_SERVITO ;
     }
 
@@ -247,7 +242,7 @@ bool WDOG_running(int quale)
     ASSERT(quale < MAX_WDTIMER_SW) ;
     DYN_ASSERT( 0 == __get_IPSR() ) ;
 
-    if (quale < MAX_WDTIMER_SW) {
+    if ( quale < MAX_WDTIMER_SW ) {
         esito = lista_timer[quale].val != TS_SERVITO ;
     }
 
@@ -276,9 +271,8 @@ static void timer_lento_isr(void)
 #endif
 #ifdef WDOG_SW_ABIL
     // Il wds viene gestito qui
-    if (!wds_run) {
-    }
-    else if (wds_s > PERIODO_S) {
+    if ( !wds_run ) {}
+    else if ( wds_s > PERIODO_S ) {
         wds_s -= PERIODO_S ;
     }
     else {
@@ -289,6 +283,7 @@ static void timer_lento_isr(void)
     }
 #endif
 }
+
 #endif
 
 static void wdog_irq(void)
@@ -319,7 +314,7 @@ void wdog_iniz(void)
     isr_wdog_StartEx(wdog_irq) ;
 
 #if MAX_WDTIMER_SW > 0
-    for (int t = 0 ; t < MAX_WDTIMER_SW ; t++) {
+    for ( int t = 0 ; t < MAX_WDTIMER_SW ; t++ ) {
         lista_timer[t].val = TS_SERVITO ;
         lista_timer[t].cb = NULL ;
     }
@@ -347,7 +342,7 @@ void wdog_iniz(void)
 #else
     // In debug niente reset
 #endif
-    if (msk) {
+    if ( msk ) {
         CySysWdtEnable(msk) ;
     }
 }
@@ -357,22 +352,22 @@ void WDOG_calcia(void)
     calcia() ;
 
 #if MAX_WDTIMER_SW > 0
-    if (tick) {
+    if ( tick ) {
         tick = false ;
 
         // Aggiorno
-        for (int t = 0 ; t < MAX_WDTIMER_SW ; t++) {
-            if (lista_timer[t].val != TS_SERVITO) {
+        for ( int t = 0 ; t < MAX_WDTIMER_SW ; t++ ) {
+            if ( lista_timer[t].val != TS_SERVITO ) {
                 lista_timer[t].val++ ;
             }
         }
 
         // Eseguo
-        for (int t = 0 ; t < MAX_WDTIMER_SW ; t++) {
-            if (TS_SCADUTO == lista_timer[t].val) {
+        for ( int t = 0 ; t < MAX_WDTIMER_SW ; t++ ) {
+            if ( TS_SCADUTO == lista_timer[t].val ) {
                 lista_timer[t].val = TS_SERVITO ;
 
-                if (lista_timer[t].cb) {
+                if ( lista_timer[t].cb ) {
                     //DBG_PRINTF("eseguo wdtimer %d\n", t) ;
                     lista_timer[t].cb() ;
                 }
@@ -386,11 +381,12 @@ void WDOG_calcia(void)
 
 void WDOG_reset(void)
 {
-	CySysWdtDisable(CY_SYS_WDT_COUNTER0_MASK | CY_SYS_WDT_COUNTER1_MASK);
+#ifdef NDEBUG
+    CySysWdtDisable(CY_SYS_WDT_COUNTER0_MASK | CY_SYS_WDT_COUNTER1_MASK) ;
 
-    DBG_PUTS(__func__);
+    DBG_PUTS(__func__) ;
 
-	// [Ri]Programmo: 1 ms
+    // [Ri]Programmo: 1 ms
     CySysWdtWriteMode(CY_SYS_WDT_COUNTER0, CY_SYS_WDT_MODE_NONE) ;
     CySysWdtWriteMatch(CY_SYS_WDT_COUNTER0, 32) ;
     CySysWdtWriteClearOnMatch(CY_SYS_WDT_COUNTER0, 1) ;
@@ -401,14 +397,17 @@ void WDOG_reset(void)
     CySysWdtWriteClearOnMatch(CY_SYS_WDT_COUNTER1, 1) ;
 
     CySysWdtEnable(CY_SYS_WDT_COUNTER0_MASK | CY_SYS_WDT_COUNTER1_MASK) ;
-
+#else
+    DBG_PUTS(__func__) ;
+    BPOINT;
+#endif
     while ( true ) {}
 }
 
 void WDOG_wds(uint16_t secondi)
 {
 #if WDOG_SW_ABIL
-    if (0 == secondi) {
+    if ( 0 == secondi ) {
         wds_run = false ;
 #   if MAX_WDTIMER_SW > 0
         wdt_spegni() ;
@@ -429,8 +428,7 @@ void WDOG_wds(uint16_t secondi)
 #else
 
 void wdog_iniz(void)
-{
-}
+{}
 
 void WDOG_calcia(void)
 {}
@@ -440,27 +438,43 @@ uint32_t WDOG_tick_in_s(void)
     return 0 ;
 }
 
-void WDOG_setcb(int a, PF_WDTIMER_SW b)
+void WDOG_setcb(
+    int a,
+    PF_WDTIMER_SW b)
 {
     UNUSED(a) ;
     UNUSED(b) ;
+    DBG_ERR ;
 }
 
-void WDOG_start(int a, uint32_t b)
+void WDOG_start(
+    int a,
+    uint32_t b)
 {
     UNUSED(a) ;
     UNUSED(b) ;
+    DBG_ERR ;
 }
 
 void WDOG_stop(int a)
 {
     UNUSED(a) ;
+    DBG_ERR ;
 }
 
 bool WDOG_running(int a)
 {
     UNUSED(a) ;
+    DBG_ERR ;
     return false ;
+}
+
+void WDOG_reset(void)
+{
+    DBG_ERR ;
+
+    BPOINT ;
+    while ( 1 ) {}
 }
 
 #endif

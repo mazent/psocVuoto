@@ -274,6 +274,7 @@ static void forza_stato(fsm_t * fsm, uint32_t stato)
 void fsm_forza_stato(fsm_t * fsm, uint32_t stato)
 {
     ASSERT(fsm) ;
+    // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
     ASSERT(fsm->tag == FSM_TAG) ;
 #ifdef DEBUG
     ASSERT(NULL == fsm_corr) ;
@@ -322,6 +323,7 @@ fsm_set_exception_state(fsm_t * fsm, uint32_t exception_state)
     RC_FSM_t rc = RC_FSM_OK ;
 
     ASSERT(fsm) ;
+    // NOLINTNEXTLINE(clang-analyzer-core.NullDereference
     ASSERT(fsm->tag == FSM_TAG) ;
 #ifdef DEBUG
     ASSERT(fsm_corr) ;
@@ -745,6 +747,7 @@ fsm_engine(fsm_t * fsm,
      * verify pointers & handles are valid
      */
     ASSERT(fsm) ;
+    // NOLINTNEXTLINE(clang-analyzer-core.NullDereference
     ASSERT(fsm->tag == FSM_TAG) ;
 #ifdef DEBUG
     ASSERT(NULL == fsm_corr) ;

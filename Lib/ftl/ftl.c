@@ -1,3 +1,4 @@
+#define STAMPA_DBG
 #include "ftl.h"
 #include "bit.h"
 #include "soc/soc.h"

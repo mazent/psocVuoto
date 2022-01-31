@@ -16,6 +16,23 @@
     Con N = 0x15 = 21 -> 13.9131 pF
 
     cfr https://community.cypress.com/docs/DOC-10498
+
+	CYBLE-022001-00	0x9898
+	CYBLE-222005-00	0xA0A0
+	CYBLE-222014-01	0xA0A0
+	CYBLE-014008-00	0x9595
+	CYBLE-214009-00	0x9595
+	CYBLE-214015-01	0x9595
+	CYBLE-012011-00	0xBCBC
+	CYBLE-012012-10	0xBCBC
+	CYBLE-212019-00	0xBCBC
+	CYBLE-212023-10	0xBCBC
+	CYBLE-212020-01	0xBCBC
+	CYBLE-224110-00	0x5555
+	CYBLE-224116-01	0x5555
+	CYBLE-212006-01	0xD0D0
+	CYBLE-202007-01	0xD0D0
+	CYBLE-202013-11	0xD0D0
 */
 //#define CAPACITOR_TRIM_VALUE       0x9595
 
@@ -92,10 +109,9 @@ static void ble_connect(bool conn)
 
 static void ble_authfail(void)
 {
-    if (NULL == pCB) {	// NOLINT(bugprone-branch-clone)
-    }
-    else if (NULL == pCB->authfail) {
-    }
+    // NOLINTNEXTLINE(bugprone-branch-clone)
+    if ( NULL == pCB ) {}
+    else if ( NULL == pCB->authfail ) {}
     else {
         pCB->authfail() ;
     }
@@ -117,7 +133,8 @@ static void notif_esito(bool esito)
 
 static void notifica(void)
 {
-    if (NULL == pNTF) {	// NOLINT(bugprone-branch-clone)
+    // NOLINTNEXTLINE(bugprone-branch-clone)
+    if ( NULL == pNTF ) {
         // Ottimo
     }
     else if ( CYBLE_STACK_STATE_BUSY == CyBle_GattGetBusyStatus() ) {
@@ -705,14 +722,6 @@ static void bt_evn(uint32 event, void * eventParam)
 //            DBG_PRINTF("\t supervisionTO 0x%04X", prm->supervisionTO) ;
 //        }
         advertising = false ;
-        {
-            CYBLE_GAP_CONN_PARAM_UPDATED_IN_CONTROLLER_T * prm =
-                (CYBLE_GAP_CONN_PARAM_UPDATED_IN_CONTROLLER_T *) eventParam ;
-            DBG_PRINTF("\t status        0x%02X", prm->status) ;
-            DBG_PRINTF("\t connIntv      0x%04X", prm->connIntv) ;
-            DBG_PRINTF("\t connLatency   0x%04X", prm->connLatency) ;
-            DBG_PRINTF("\t supervisionTO 0x%04X", prm->supervisionTO) ;
-        }
         evn_conn() ;
         break ;
 
@@ -903,7 +912,7 @@ void BLE_start(const BLE_CB * cb)
     ASSERT(cb) ;
 
     if (!bt_on) {
-        DBG_PUTS("ble start") ;
+    	DBG_FUN;
 
         pCB = cb ;
 #ifdef BLE_CLOCK
@@ -967,7 +976,7 @@ bool BLE_rand(uint8_t * nc)
 
 void BLE_stop(void)
 {
-        DBG_PUTS("ble stop") ;
+	DBG_FUN;
 
     if (bt_on) {
         if (connesso) {
@@ -1429,7 +1438,7 @@ bool BLE_notify(BLE_NTF * n)
         pNTF = &ntf ;
 
         timer_setcb(TIM_BLE_NTF, to_notif) ;
-        timer_start(TIM_BLE_NTF, n->to) ;
+        timer_start(TIM_BLE_NTF, n->to + ADV_INT_MS) ;
 
         esito = true ;
     } while (false) ;
@@ -1556,12 +1565,12 @@ bool BLE_clock(void)
     bool esito = false ;
     CYBLE_BLESS_STATE_T blePower = CyBle_GetBleSsState() ;
 
+    // NOLINTNEXTLINE(bugprone-branch-clone)
 	if ( (0 == blePower) || (CYBLE_BLESS_STATE_INVALID == blePower) ) {
 		// Mai inizializzato o spento
     }
-    else if ( (blePower == CYBLE_BLESS_STATE_DEEPSLEEP ||
-               blePower == CYBLE_BLESS_STATE_ECO_ON) ) {
-    }
+    else if ( (blePower == CYBLE_BLESS_STATE_DEEPSLEEP) ||
+              (blePower == CYBLE_BLESS_STATE_ECO_ON) ) {}
     else {
         esito = blePower != CYBLE_BLESS_STATE_EVENT_CLOSE ;
     }
@@ -1606,14 +1615,15 @@ bool BLE_nome(const char * a)
     return false ;
 }
 
-bool BLE_mac(void * x)
+bool BLE_mac(
+    void * a,
+    bool b)
 {
     return false ;
 }
 
-void BLE_notify(uint16_t a, void * b, uint16_t c)
-{
-}
+bool BLE_notify(BLE_NTF * p)
+{ return false ; }
 
 void BLE_enter_deep(void)
 {

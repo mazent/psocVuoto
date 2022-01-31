@@ -35,4 +35,7 @@ RICH_CPU BLE_cpu(void) ;
 // se ne cerca una libera fra quelle in piu'
 //#define MAX_NUM_APC     0
 
+// Debug malloc/free con diario.py
+#define SOC_DBG_MALLOC		1
+
 #endif

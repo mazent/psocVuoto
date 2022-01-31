@@ -26,6 +26,7 @@ extern void STAMPA_puts(const char * x) ;
 extern void STAMPA_putchar(char c) ;
 extern void STAMPA_print_hex(const char * titolo, const void * v, const int dim) ;
 
+#	define DBG_FUN						STAMPA_puts(__func__)
 #	define DBG_QUA						STAMPA_printf("QUA %s %d", __FILE__, __LINE__)
 #	define DBG_ERR						STAMPA_printf("ERR %s %d", __FILE__, __LINE__)
 #	define DBG_ASSERT					STAMPA_printf("ASSERT %s %d", __FILE__, __LINE__)
@@ -34,6 +35,7 @@ extern void STAMPA_print_hex(const char * titolo, const void * v, const int dim)
 #	define DBG_PUTCHAR(a)				STAMPA_putchar(a)
 #	define DBG_PRINT_HEX(t, x, d)		STAMPA_print_hex(t, x, d)
 #else
+#	define DBG_FUN
 #	define DBG_QUA
 #	define DBG_ERR
 #	define DBG_ASSERT
