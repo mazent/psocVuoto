@@ -46,30 +46,30 @@
 #endif  /* (CY_PSOC4) */
 
 
-#define BootloaderEmulator_DUAL_APP_BOOTLOADER        (0u)  /* Not supported  */
-#define BootloaderEmulator_BOOTLOADER_APP_VERSION     (0u)
-#define BootloaderEmulator_FAST_APP_VALIDATION        (0u)  /* Not supported  */
+#define BootloaderEmulator_DUAL_APP_BOOTLOADER        (0)  /* Not supported  */
+#define BootloaderEmulator_BOOTLOADER_APP_VERSION     (0)
+#define BootloaderEmulator_FAST_APP_VALIDATION        (0)  /* Not supported  */
 #define BootloaderEmulator_PACKET_CHECKSUM_CRC        (CI_PACKET_CHECKSUM_CRC)  /* Configurable   */
-#define BootloaderEmulator_WAIT_FOR_COMMAND           (1u)  /* Wait           */
-#define BootloaderEmulator_WAIT_FOR_COMMAND_TIME      (0u)  /*      forever   */
-#define BootloaderEmulator_BOOTLOADER_APP_VALIDATION  (0u)  /* Not supported  */
+#define BootloaderEmulator_WAIT_FOR_COMMAND           (1)  /* Wait           */
+#define BootloaderEmulator_WAIT_FOR_COMMAND_TIME      (0)  /*      forever   */
+#define BootloaderEmulator_BOOTLOADER_APP_VALIDATION  (0)  /* Not supported  */
 
-#define BootloaderEmulator_CMD_GET_FLASH_SIZE_AVAIL   (1u)
-#define BootloaderEmulator_CMD_ERASE_ROW_AVAIL        (0u)
-#define BootloaderEmulator_CMD_VERIFY_ROW_AVAIL       (1u)
-#define BootloaderEmulator_CMD_SYNC_BOOTLOADER_AVAIL  (0u)
-#define BootloaderEmulator_CMD_SEND_DATA_AVAIL        (1u)
-#define BootloaderEmulator_CMD_GET_METADATA           (0u)  /* Not supported  */
+#define BootloaderEmulator_CMD_GET_FLASH_SIZE_AVAIL   (1)
+#define BootloaderEmulator_CMD_ERASE_ROW_AVAIL        (0)
+#define BootloaderEmulator_CMD_VERIFY_ROW_AVAIL       (0)
+#define BootloaderEmulator_CMD_SYNC_BOOTLOADER_AVAIL  (0)
+#define BootloaderEmulator_CMD_SEND_DATA_AVAIL        (1)
+#define BootloaderEmulator_CMD_GET_METADATA           (0)  /* Not supported  */
 
 
 /*******************************************************************************
 * Bootloadable applications identification
 *******************************************************************************/
-#define BootloaderEmulator_MD_BTLDB_ACTIVE_0          (0x00u)
+#define BootloaderEmulator_MD_BTLDB_ACTIVE_0          (0x00)
 
 /* Mask used to indicate starting application */
-#define BootloaderEmulator_SCHEDULE_BTLDB             (0x80u)
-#define BootloaderEmulator_SCHEDULE_BTLDR             (0x40u)
+#define BootloaderEmulator_SCHEDULE_BTLDB             (0x80)
+#define BootloaderEmulator_SCHEDULE_BTLDR             (0x40)
 
 
 /*******************************************************************************
@@ -83,7 +83,7 @@
 *******************************************************************************/
 void     BootloaderEmulator_Start(void);
 cystatus BootloaderEmulator_ValidateBootloadable(void);
-uint32   BootloaderEmulator_Calc8BitSum(uint32 addr);
+uint32   BootloaderEmulator_Calc8BitSum(uint32 rowNum);
 
 
 #endif /* BootloaderEmulator_H */

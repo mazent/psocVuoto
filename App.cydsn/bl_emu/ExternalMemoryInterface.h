@@ -30,10 +30,15 @@
 
     
 void EMI_Start(void);
-cystatus EMI_EraseAll(void);
+bool EMI_EraseAll(void);
 cystatus EMI_WriteData(uint8 instruction, uint32 addressBytes, uint32 dataSize, uint8 *data);
 cystatus EMI_ReadData (uint32 addressBytes, uint32 dataSize, uint8 *data);
 bool EMI_IsBusy(void);
+
+// Invocare prima del wdog
+bool EMI_EraseBoot(void);
+
+bool EMI_verifica(uint32_t, const size_t, const void *);
 
 void EMI_stop(void) ;
 

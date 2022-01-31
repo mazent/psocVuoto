@@ -40,6 +40,7 @@ void DBG_printf_nocrlf(const char *, ...) ;
 void DBG_puts_nocrlf(const char *) ;
 
 	// Posso [dis]abilitare a run-time
+	// Interruttore A in SC681/doc/doc.html
 void DBG_ctrl(bool) ;
 #else
 	// No, grazie

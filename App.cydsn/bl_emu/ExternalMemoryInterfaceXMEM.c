@@ -8,6 +8,7 @@
 
 extern void to_aggiornamento(void *) ;
 
+#define STAMPA_DBG
 #include "ExternalMemoryInterface.h"
 #include "xmem/xmem.h"
 #include "soc/soc.h"
@@ -20,8 +21,7 @@ extern void to_aggiornamento(void *) ;
  * in queste occasioni
  */
 
-#define TO_AGG_MS		10000
-
+#define TO_AGG_MS       10000
 
 //uint8 emiWriteBuffer[EMI_SIZE_OF_WRITE_BUFFER] ;
 
@@ -43,15 +43,14 @@ void EMI_Start(void)
     /* Start the SCB component */
     CHECK( XMEM_iniz() ) ;
 
-	timer_setcb(TIM_BL_EMU, to_aggiornamento) ;
-	timer_start(TIM_BL_EMU, TO_AGG_MS) ;
+    timer_setcb(TIM_BL_EMU, to_aggiornamento) ;
+    timer_start(TIM_BL_EMU, TO_AGG_MS) ;
 }
 
 void EMI_stop(void)
 {
-	timer_stop(TIM_BL_EMU) ;
+    timer_stop(TIM_BL_EMU) ;
 }
-
 
 /*******************************************************************************
 * Function Name: EMI_WriteData
@@ -80,16 +79,17 @@ void EMI_stop(void)
 cystatus EMI_WriteData(uint8 instruction,
                        uint32 addressBytes,
                        uint32 dataSize,
-                       uint8 *data)
+                       uint8 * data)
 {
-	timer_start(TIM_BL_EMU, TO_AGG_MS) ;
+    timer_start(TIM_BL_EMU, TO_AGG_MS) ;
+
+    UNUSED(instruction) ;
 
     if ( XMEM_write(addressBytes, data, dataSize) ) {
         return CYRET_SUCCESS ;
     }
-    else {
-        return CYRET_UNKNOWN ;
-    }
+
+    return CYRET_UNKNOWN ;
 }
 
 /*******************************************************************************
@@ -138,17 +138,46 @@ cystatus EMI_WriteData(uint8 instruction,
 *    Other non-zero          Failure
 *    CYBLE_ERROR_INVALID_PARAMETER - problems with decryption
 *******************************************************************************/
-cystatus EMI_ReadData(uint32 addressBytes, uint32 dataSize, uint8 *data)
+cystatus EMI_ReadData(uint32 addressBytes, uint32 dataSize, uint8 * data)
 {
-	timer_start(TIM_BL_EMU, TO_AGG_MS) ;
+    timer_start(TIM_BL_EMU, TO_AGG_MS) ;
 
     if ( XMEM_read(addressBytes, data, dataSize) ) {
         return CYRET_SUCCESS ;
     }
-    else {
-        return CYRET_UNKNOWN ;
-    }
+
+    return CYRET_UNKNOWN ;
 }
+
+#if 0 == BootloaderEmulator_CMD_VERIFY_ROW_AVAIL
+
+bool EMI_verifica(uint32_t dove, const size_t dim, const void * scritti)
+{
+    bool esito = false ;
+    void * letti = soc_malloc(dim) ;
+
+    timer_start(TIM_BL_EMU, TO_AGG_MS) ;
+
+    do {
+        if (NULL == letti) {
+            DBG_ERR ;
+            break ;
+        }
+
+        if ( !XMEM_read(dove, letti, dim) ) {
+            DBG_ERR ;
+            break ;
+        }
+
+        esito = 0 == memcmp(letti, scritti, dim) ;
+    } while (false) ;
+
+    soc_free(letti) ;
+
+    return esito ;
+}
+
+#endif
 
 /*******************************************************************************
 * Function Name: EMI_EraseAll
@@ -171,7 +200,78 @@ cystatus EMI_ReadData(uint32 addressBytes, uint32 dataSize, uint8 *data)
 *  None
 *
 *******************************************************************************/
-cystatus EMI_EraseAll(void)
+#if 0
+
+bool EMI_EraseAll(void)
+{
+    // Si inizia a scrivere da qua
+    uint32_t addr = 0x1000 ;
+    int i = 0 ;
+    const int NUM_BLOCKS = (256 * 1024) / XMEM_BLOCK_SIZE ;
+
+    do {
+        if ( !XMEM_is_erased(addr, CY_FLASH_SIZEOF_ROW) ) {
+            WDOG_calcia() ;
+            timer_start(TIM_BL_EMU, TO_AGG_MS) ;
+
+            if ( !XMEM_erase_block(addr) ) {
+                DBG_ERR ;
+                break ;
+            }
+        }
+
+        ++i ;
+        addr = XMEM_BLOCK_SIZE ;
+
+        for ( ; i < NUM_BLOCKS ; ++i, addr += XMEM_BLOCK_SIZE) {
+            if ( !XMEM_is_erased(addr, CY_FLASH_SIZEOF_ROW) ) {
+                WDOG_calcia() ;
+                timer_start(TIM_BL_EMU, TO_AGG_MS) ;
+
+                if ( !XMEM_erase_block(addr) ) {
+                    DBG_ERR ;
+                    break ;
+                }
+            }
+        }
+    } while (false) ;
+
+    return NUM_BLOCKS == i ;
+}
+
+bool EMI_EraseBoot(void)
+{
+    uint32_t addr = 0x1000 ;
+    int i = 0 ;
+    const int NUM_BLOCKS = (256 * 1024) / XMEM_BLOCK_SIZE ;
+
+    do {
+        if ( !XMEM_is_erased(addr, CY_FLASH_SIZEOF_ROW) ) {
+            if ( !XMEM_erase_block(addr) ) {
+                DBG_ERR ;
+                break ;
+            }
+        }
+
+        ++i ;
+        addr = XMEM_BLOCK_SIZE ;
+
+        for ( ; i < NUM_BLOCKS ; ++i, addr += XMEM_BLOCK_SIZE) {
+            if ( !XMEM_is_erased(addr, CY_FLASH_SIZEOF_ROW) ) {
+                if ( !XMEM_erase_block(addr) ) {
+                    DBG_ERR ;
+                    break ;
+                }
+            }
+        }
+    } while (false) ;
+
+    return NUM_BLOCKS == i ;
+}
+
+#else
+
+bool EMI_EraseAll(void)
 {
     /* Erase in terms of blocks - each block is of 64 kB.
      * So erasing four blocks should suffice for 256 kB chips as well.
@@ -181,14 +281,19 @@ cystatus EMI_EraseAll(void)
     int i ;
     const int NUM_BLOCKS = (256 * 1024) / XMEM_BLOCK_SIZE ;
     for (i = 0 ; i < NUM_BLOCKS ; ++i, addr += XMEM_BLOCK_SIZE) {
-    	timer_start(TIM_BL_EMU, TO_AGG_MS) ;
+        WDOG_calcia() ;
+        timer_start(TIM_BL_EMU, TO_AGG_MS) ;
 
         if ( !XMEM_erase_block(addr) ) {
+            DBG_ERR ;
             break ;
         }
     }
 
-    return NUM_BLOCKS == i ? CYRET_SUCCESS : CYRET_UNKNOWN ;
+    return NUM_BLOCKS == i ;
 }
+
+
+#endif
 
 #endif
