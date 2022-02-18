@@ -24,9 +24,6 @@
 
 #include "Options.h"
 #include "ExternalMemoryInterface.h"
-//#include "cytypes.h"
-//#include "debug.h"
-//#include <project.h>
 
 #ifndef CY_SCB_EMI_SPIM_H
 

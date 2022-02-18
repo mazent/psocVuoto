@@ -31,7 +31,6 @@
 #include "ExternalMemoryInterface.h"
 #include "BT_bts.h"
 
-
 extern void WDOG_calcia(void) ;
 
 #define BootloaderEmulator_activeApp      (BootloaderEmulator_MD_BTLDB_ACTIVE_0)
@@ -40,7 +39,7 @@ uint8 metadata[CY_FLASH_SIZEOF_ROW] ;
 
 uint16 appSizeInRows ;
 uint16 appFirstRowNum ;
-uint16 appExtMemChecksum = 0u ;
+uint16 appExtMemChecksum = 0 ;
 
 #if (ENCRYPTION_ENABLED == YES)
 uint8 emiKey[KEY_LENGTH] ;
@@ -49,13 +48,13 @@ uint8 emiKey[KEY_LENGTH] ;
 /***************************************
 *     Function Prototypes
 ***************************************/
-static cystatus BootloaderEmulator_WritePacket(uint8 status,
-                                               uint8 buffer[],
-                                               uint16 size) ;
-static uint16   BootloaderEmulator_CalcPacketChecksum(const uint8 buffer[],
-                                                      uint16 size) ;
-void     BootloaderEmulator_HostLink(const uint8 timeOut) ;
-
+static cystatus BootloaderEmulator_WritePacket(
+    uint8 status,
+    uint8 buffer[],
+    uint16 size) ;
+static uint16 BootloaderEmulator_CalcPacketChecksum(
+    const uint8 buffer[],
+    uint16 size) ;
 
 /*******************************************************************************
 * Function Name: BootloaderEmulator_CalcPacketChecksum
@@ -75,57 +74,58 @@ void     BootloaderEmulator_HostLink(const uint8 timeOut) ;
 *  16 bit checksum for the provided data
 *
 *******************************************************************************/
-static uint16 BootloaderEmulator_CalcPacketChecksum(const uint8 buffer[],
-                                                    uint16 size)
+static uint16 BootloaderEmulator_CalcPacketChecksum(
+    const uint8 buffer[],
+    uint16 size)
 {
-#if (0u != BootloaderEmulator_PACKET_CHECKSUM_CRC)
+#if (0 != BootloaderEmulator_PACKET_CHECKSUM_CRC)
 
     uint16 CYDATA crc = BootloaderEmulator_CRC_CCITT_INITIAL_VALUE ;
     uint16 CYDATA tmp ;
     uint8 CYDATA i ;
     uint16 CYDATA tmpIndex = size ;
 
-    if (0u == size) {
+    if ( 0 == size ) {
         crc = ~crc ;
     }
     else {
         do {
             tmp = buffer[tmpIndex - size] ;
 
-            for (i = 0u ; i < 8u ; i++) {
-                if ( 0u != ( (crc & 0x0001u) ^ (tmp & 0x0001u) ) ) {
+            for ( i = 0 ; i < 8 ; i++ ) {
+                if ( 0 != ( (crc & 0x0001u) ^ (tmp & 0x0001u) ) ) {
                     crc =
-                        (crc >> 1u) ^ BootloaderEmulator_CRC_CCITT_POLYNOMIAL ;
+                        (crc >> 1) ^ BootloaderEmulator_CRC_CCITT_POLYNOMIAL ;
                 }
                 else {
-                    crc >>= 1u ;
+                    crc >>= 1 ;
                 }
 
-                tmp >>= 1u ;
+                tmp >>= 1 ;
             }
 
             size-- ;
-        } while (0u != size) ;
+        } while ( 0 != size ) ;
 
         crc = ~crc ;
         tmp = crc ;
-        crc = ( uint16 )(crc << 8u) | (tmp >> 8u) ;
+        crc = ( uint16 ) (crc << 8) | (tmp >> 8) ;
     }
 
-    return(crc) ;
+    return crc ;
 
 #else
 
-    uint16 CYDATA sum = 0u ;
+    uint16 CYDATA sum = 0 ;
 
-    while (size > 0u) {
-        sum += buffer[size - 1u] ;
+    while ( size > 0 ) {
+        sum += buffer[size - 1] ;
         size-- ;
     }
 
-    return( ( uint16 )1u + ( uint16 )(~sum) ) ;
+    return ( uint16 ) 1 + ( uint16 ) (~sum) ;
 
-#endif     /* (0u != BootloaderEmulator_PACKET_CHECKSUM_CRC) */
+#endif     /* (0 != BootloaderEmulator_PACKET_CHECKSUM_CRC) */
 }
 
 /*******************************************************************************
@@ -146,7 +146,7 @@ static uint16 BootloaderEmulator_CalcPacketChecksum(const uint8 buffer[],
 *******************************************************************************/
 uint32 BootloaderEmulator_Calc8BitSum(uint32 rowNum)
 {
-    uint32 sum = 0u ;
+    uint32 sum = 0 ;
     uint8 flashRowFromExtMem[CY_FLASH_SIZEOF_ROW] ;
     uint32 size = CY_FLASH_SIZEOF_ROW ;
 
@@ -154,22 +154,23 @@ uint32 BootloaderEmulator_Calc8BitSum(uint32 rowNum)
                         CY_FLASH_SIZEOF_ROW,
                         flashRowFromExtMem) ;
 
-    DBG_PRINT_TEXT("") ;
-    DBG_PRINT_TEXT("BootloaderEmulator_Calc8BitSum() function.") ;
+    DBG_PUTS("") ;
+    DBG_PUTS("BootloaderEmulator_Calc8BitSum() function.") ;
 
     DBG_PRINTF("rowNum  = %d", rowNum) ;
 
-    DBG_PRINTF("EMI_APP_ABS_ADDR(rowNum)  = %d", EMI_APP_ABS_ADDR( (uint16)rowNum )) ;
+    DBG_PRINTF( "EMI_APP_ABS_ADDR(rowNum)  = %d",
+                EMI_APP_ABS_ADDR( (uint16) rowNum ) ) ;
 
-//    DBG_PRINT_TEXT("EMI_ReadData():") ;
+//    DBG_PUTS("EMI_ReadData():") ;
 //    DBG_PRINT_ARRAY(flashRowFromExtMem, size) ;
 
-    while (size > 0u) {
+    while ( size > 0 ) {
         size-- ;
         sum += flashRowFromExtMem[size] ;
     }
 
-    return(sum) ;
+    return sum ;
 }
 
 /*******************************************************************************
@@ -212,7 +213,9 @@ uint32 BootloaderEmulator_Calc8BitSum(uint32 rowNum)
 //MZ void BootloaderEmulator_Start(void)
 //MZ {
 //MZ     EMI_Start() ;
-//MZ     BootloaderEmulator_HostLink(BootloaderEmulator_WAIT_FOR_COMMAND_FOREVER) ;
+//MZ
+//     BootloaderEmulator_HostLink(BootloaderEmulator_WAIT_FOR_COMMAND_FOREVER)
+// ;
 //MZ }
 
 /*******************************************************************************
@@ -246,39 +249,39 @@ uint32 BootloaderEmulator_Calc8BitSum(uint32 rowNum)
 cystatus BootloaderEmulator_ValidateBootloadable(void)
 {
     uint8 appChecksum ;
-    uint8 calcedChecksum = 0u ;
+    uint8 calcedChecksum = 0 ;
     uint8 appFlashRow[CY_FLASH_SIZEOF_ROW] ;
     uint32 row ;
     uint32 i ;
-    uint32 valid = 0u ;
+    uint32 valid = 0 ;
 
     cystatus status = CYRET_SUCCESS ;
 
     DBG_PRINTF("BootloaderEmulator_ValidateBootlodable(): ") ;
-    if (0u != appSizeInRows) {
+    if ( 0 != appSizeInRows ) {
         DBG_PRINTF("appSizeInRows: %d", appSizeInRows) ;
 
         /* Get bootloadable application checksum from external memory */
-        (void) EMI_ReadData(EMI_APP_ABS_ADDR(appSizeInRows - 1u),
+        (void) EMI_ReadData(EMI_APP_ABS_ADDR(appSizeInRows - 1),
                             CY_FLASH_SIZEOF_ROW,
                             appFlashRow) ;
 
-//        DBG_PRINT_TEXT("App Row here: ") ;
+//        DBG_PUTS("App Row here: ") ;
 //        DBG_PRINT_ARRAY(appFlashRow, CY_FLASH_SIZEOF_ROW) ;
-//        DBG_PRINT_TEXT("") ;
+//        DBG_PUTS("") ;
 
         appChecksum = appFlashRow[BootloaderEmulator_MD_APP_CHECKSUM] ;
 
-        for (row = 0u ; row < (appSizeInRows - 1u) ; row++) {
+        for ( row = 0 ; row < (appSizeInRows - 1U) ; row++ ) {
             /* Read flash row data from external memory */
             (void) EMI_ReadData(EMI_APP_ABS_ADDR(row),
                                 CY_FLASH_SIZEOF_ROW,
                                 appFlashRow) ;
 
             /* Calculate checksum of application row */
-            for (i = 0u ; i < CY_FLASH_SIZEOF_ROW ; i++) {
-                if ( (appFlashRow[i] != 0u) && (appFlashRow[i] != 0xFFu) ) {
-                    valid = 1u ;
+            for ( i = 0 ; i < CY_FLASH_SIZEOF_ROW ; i++ ) {
+                if ( (appFlashRow[i] != 0) && (appFlashRow[i] != 0xFF) ) {
+                    valid = 1 ;
                 }
                 calcedChecksum += appFlashRow[i] ;
             }
@@ -286,25 +289,28 @@ cystatus BootloaderEmulator_ValidateBootloadable(void)
 
         DBG_PRINTF("calcedChecksum = %x", calcedChecksum) ;
 
-        calcedChecksum = ( uint8 )1u + ( uint8 )(~calcedChecksum) ;
+        calcedChecksum = ( uint8 ) 1 + ( uint8 ) (~calcedChecksum) ;
 
-        if ( (calcedChecksum != appChecksum) || (0u == valid) ) {
+        if ( (calcedChecksum != appChecksum) || (0 == valid) ) {
             status = CYRET_BAD_DATA ;
         }
 
-        DBG_PRINTF("BootloaderEmulator_ValidateBootloadable() Status: %d", (uint16) status) ;
+        DBG_PRINTF("BootloaderEmulator_ValidateBootloadable() Status: %d",
+                   (uint16) status) ;
 
-        DBG_PRINTF("Stored Bootloadable Application Checksum  = %d",(uint16) appChecksum ) ;
+        DBG_PRINTF("Stored Bootloadable Application Checksum  = %d",
+                   (uint16) appChecksum) ;
 
-        DBG_PRINTF("Calculated Bootloadable Application Checksum  = %d", (uint16) calcedChecksum) ;
+        DBG_PRINTF("Calculated Bootloadable Application Checksum  = %d",
+                   (uint16) calcedChecksum) ;
     }
     else {
         status = CYRET_BAD_DATA ;
-        DBG_PRINT_TEXT("Error: Stored data length = 0.") ;
-        DBG_PRINT_TEXT("") ;
+        DBG_PUTS("Error: Stored data length = 0.") ;
+        DBG_PUTS("") ;
     }
 
-    return(status) ;
+    return status ;
 }
 
 /*
@@ -316,15 +322,15 @@ static CYBIT communicationState = BootloaderEmulator_COMMUNICATION_STATE_IDLE ;
 static uint8 packetBuffer[BootloaderEmulator_SIZEOF_COMMAND_BUFFER] ;
 static uint8 dataBuffer[BootloaderEmulator_SIZEOF_COMMAND_BUFFER] ;
 
-static uint16 CYDATA dataOffset = 0u ;
+static uint16 CYDATA dataOffset = 0 ;
 
 void BootloaderEmulator_iniz(void)
 {
-	communicationState = BootloaderEmulator_COMMUNICATION_STATE_IDLE ;
-	dataOffset = 0u ;
+    communicationState = BootloaderEmulator_COMMUNICATION_STATE_IDLE ;
+    dataOffset = 0 ;
 
-	/* Initialize communications channel. */
-	CyBLE_CyBtldrCommStart() ;
+    /* Initialize communications channel. */
+    CyBLE_CyBtldrCommStart() ;
 }
 
 /*******************************************************************************
@@ -352,13 +358,13 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
     uint8 CYDATA ackCode ;
     uint16 CYDATA pktChecksum ;
     cystatus CYDATA readStat ;
-    uint16 CYDATA pktSize = 0u ;
-//MZ    uint16 CYDATA dataOffset = 0u ;
-    uint8 CYDATA timeOutCnt = 10u ;
+    uint16 CYDATA pktSize = 0 ;
+//MZ    uint16 CYDATA dataOffset = 0 ;
+    uint8 CYDATA timeOutCnt = 10 ;
 
-#if (0u != BootloaderEmulator_FAST_APP_VALIDATION)
-    uint8 CYDATA clearedMetaData = 0u ;
-#endif      /* (0u != BootloaderEmulator_FAST_APP_VALIDATION) */
+#if (0 != BootloaderEmulator_FAST_APP_VALIDATION)
+    uint8 CYDATA clearedMetaData = 0 ;
+#endif      /* (0 != BootloaderEmulator_FAST_APP_VALIDATION) */
 
 //MZ    CYBIT communicationState = BootloaderEmulator_COMMUNICATION_STATE_IDLE ;
 //MZ
@@ -382,40 +388,58 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
                 packetBuffer,
                 BootloaderEmulator_SIZEOF_COMMAND_BUFFER,
                 &numberRead,
-                (0u == timeOut) ? 0xFFu : timeOut) ;
-            if (0u != timeOut) {
+                (0 == timeOut) ? 0xFF : timeOut) ;
+            if ( 0 != timeOut ) {
                 timeOutCnt-- ;
             }
-        } while ( (0u != timeOutCnt) && (readStat != CYRET_SUCCESS) ) ;
+        } while ( (0 != timeOutCnt) && (readStat != CYRET_SUCCESS) ) ;
 
         if ( readStat != CYRET_SUCCESS ) {
-			break ;
+            break ;
         }
 
         if ( (numberRead < BootloaderEmulator_MIN_PKT_SIZE) ||
              (packetBuffer[BootloaderEmulator_SOP_ADDR] !=
               BootloaderEmulator_SOP) ) {
+            DBG_ERR ;
             ackCode = BootloaderEmulator_ERR_DATA ;
         }
         else {
             pktSize =
-                ( (uint16)( (uint16)packetBuffer[BootloaderEmulator_SIZE_ADDR + 1u] << 8u ) ) |
+                ( (uint16) ( (uint16) packetBuffer[BootloaderEmulator_SIZE_ADDR
+                                                   + 1] << 8 ) ) |
                 packetBuffer[BootloaderEmulator_SIZE_ADDR] ;
 
             pktChecksum =
-                ( (uint16)( (uint16)packetBuffer[BootloaderEmulator_CHK_ADDR(pktSize) + 1u] << 8u ) ) |
+                ( (uint16) ( (uint16) packetBuffer[BootloaderEmulator_CHK_ADDR(
+                                                       pktSize) +
+                                                   1] << 8 ) ) |
                 packetBuffer[BootloaderEmulator_CHK_ADDR(pktSize)] ;
 
             if ( (pktSize + BootloaderEmulator_MIN_PKT_SIZE) > numberRead ) {
+                DBG_ERR ;
+                DBG_PRINTF("\t %d + %d > %d",
+                           pktSize,
+                           BootloaderEmulator_MIN_PKT_SIZE,
+                           numberRead) ;
                 ackCode = BootloaderEmulator_ERR_LENGTH ;
             }
-            else if (packetBuffer[BootloaderEmulator_EOP_ADDR(pktSize)] !=
-                     BootloaderEmulator_EOP) {
+            else if ( packetBuffer[BootloaderEmulator_EOP_ADDR(pktSize)] !=
+                      BootloaderEmulator_EOP ) {
+                DBG_ERR ;
+                DBG_PRINTF("\t pktSize = %d, buf[%d] = %02X != %02X",
+                           pktSize,
+						   BootloaderEmulator_EOP_ADDR(pktSize),
+						   packetBuffer[BootloaderEmulator_EOP_ADDR(pktSize)],
+						   BootloaderEmulator_EOP) ;
                 ackCode = BootloaderEmulator_ERR_DATA ;
             }
             else if ( pktChecksum !=
                       BootloaderEmulator_CalcPacketChecksum(packetBuffer,
-                                                            pktSize + BootloaderEmulator_DATA_ADDR) ) {
+                                                            pktSize +
+                                                            BootloaderEmulator_DATA_ADDR) )
+            {
+                DBG_ERR ;
                 ackCode = BootloaderEmulator_ERR_CHECKSUM ;
             }
             else {
@@ -423,31 +447,32 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
             }
         }
 
-        rspSize = 0u ;
-        if (ackCode == CYRET_SUCCESS) {
+        rspSize = 0 ;
+        if ( ackCode == CYRET_SUCCESS ) {
             uint8 CYDATA btldrData =
                 packetBuffer[BootloaderEmulator_DATA_ADDR] ;
 
             ackCode = BootloaderEmulator_ERR_DATA ;
-            switch (packetBuffer[BootloaderEmulator_CMD_ADDR]) {
+            switch ( packetBuffer[BootloaderEmulator_CMD_ADDR] ) {
             /***************************************************************************
             *   Verify checksum
             ***************************************************************************/
             case BootloaderEmulator_COMMAND_CHECKSUM:
 
-                DBG_PRINT_TEXT("Command: Checksum") ;
+                DBG_PUTS("Command: Checksum") ;
                 if ( (BootloaderEmulator_COMMUNICATION_STATE_ACTIVE ==
-                      communicationState) && (pktSize == 0u) ) {
+                      communicationState) && (pktSize == 0) ) {
                     packetBuffer[BootloaderEmulator_DATA_ADDR] =
-                        (uint8)(BootloaderEmulator_ValidateBootloadable() ==
-                                CYRET_SUCCESS) ;
+                        (uint8) (BootloaderEmulator_ValidateBootloadable() ==
+                                 CYRET_SUCCESS) ;
 
-                    DBG_PRINT_TEXT("") ;
-                    DBG_PRINT_TEXT("BootloaderEmulator:") ;
-                    DBG_PRINTF("\tVerify Checksum Command: %d", packetBuffer[BootloaderEmulator_DATA_ADDR]) ;
-                    DBG_PRINT_TEXT("") ;
+                    DBG_PUTS("") ;
+                    DBG_PUTS("BootloaderEmulator:") ;
+                    DBG_PRINTF("\tVerify Checksum Command: %d",
+                               packetBuffer[BootloaderEmulator_DATA_ADDR]) ;
+                    DBG_PUTS("") ;
 
-                    rspSize = 1u ;
+                    rspSize = 1 ;
                     ackCode = CYRET_SUCCESS ;
                 }
                 break ;
@@ -456,48 +481,54 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
                 *   Get flash size
                 ***************************************************************************/
 
-#if (0u != BootloaderEmulator_CMD_GET_FLASH_SIZE_AVAIL)
+#if (0 != BootloaderEmulator_CMD_GET_FLASH_SIZE_AVAIL)
 
             case BootloaderEmulator_COMMAND_REPORT_SIZE:
 
-                DBG_PRINT_TEXT("Command: Report Size") ;
+                DBG_PUTS("Command: Report Size") ;
                 if ( (BootloaderEmulator_COMMUNICATION_STATE_ACTIVE ==
-                      communicationState) && (pktSize == 1u) ) {
-                    packetBuffer[BootloaderEmulator_DATA_ADDR] = LO8(BootloaderEmulator_FIRST_ROW_IN_ARRAY) ;
-                    packetBuffer[BootloaderEmulator_DATA_ADDR + 1u] = HI8(BootloaderEmulator_FIRST_ROW_IN_ARRAY) ;
+                      communicationState) && (pktSize == 1) ) {
+                    packetBuffer[BootloaderEmulator_DATA_ADDR] = LO8(
+                        BootloaderEmulator_FIRST_ROW_IN_ARRAY) ;
+                    packetBuffer[BootloaderEmulator_DATA_ADDR + 1] = HI8(
+                        BootloaderEmulator_FIRST_ROW_IN_ARRAY) ;
 
-                    packetBuffer[BootloaderEmulator_DATA_ADDR + 2u] = LO8(BootloaderEmulator_NUMBER_OF_ROWS_IN_ARRAY - 1u) ;
+                    packetBuffer[BootloaderEmulator_DATA_ADDR + 2] = LO8(
+                        BootloaderEmulator_NUMBER_OF_ROWS_IN_ARRAY - 1) ;
 
-                    packetBuffer[BootloaderEmulator_DATA_ADDR + 3u] = HI8(BootloaderEmulator_NUMBER_OF_ROWS_IN_ARRAY - 1u) ;
+                    packetBuffer[BootloaderEmulator_DATA_ADDR + 3] = HI8(
+                        BootloaderEmulator_NUMBER_OF_ROWS_IN_ARRAY - 1) ;
 
-                    rspSize = 4u ;
+                    rspSize = 4 ;
                     ackCode = CYRET_SUCCESS ;
 
-                    DBG_PRINTF("First Available Row in Array: 0x%04X", BootloaderEmulator_FIRST_ROW_IN_ARRAY) ;
-                    DBG_PRINT_TEXT("") ;
+                    DBG_PRINTF("First Available Row in Array: 0x%04X",
+                               BootloaderEmulator_FIRST_ROW_IN_ARRAY) ;
+                    DBG_PUTS("") ;
 
-                    DBG_PRINTF("Last Available Row in Array: 0x%04X", BootloaderEmulator_NUMBER_OF_ROWS_IN_ARRAY) ;
+                    DBG_PRINTF("Last Available Row in Array: 0x%04X",
+                               BootloaderEmulator_NUMBER_OF_ROWS_IN_ARRAY) ;
                 }
                 break ;
 
-#endif              /* (0u != BootloaderEmulator_CMD_GET_FLASH_SIZE_AVAIL) */
+#endif              /* (0 != BootloaderEmulator_CMD_GET_FLASH_SIZE_AVAIL) */
 
             /***************************************************************************
             *   Program / Erase row
             ***************************************************************************/
             case BootloaderEmulator_COMMAND_PROGRAM:
 
-                DBG_PRINT_TEXT("Command: Program. ") ;
+                DBG_PUTS("Command: Program. ") ;
                 /* The btldrData variable holds Flash Array ID */
 
-#if (0u != BootloaderEmulator_CMD_ERASE_ROW_AVAIL)
+#if (0 != BootloaderEmulator_CMD_ERASE_ROW_AVAIL)
 
             case BootloaderEmulator_COMMAND_ERASE:
-                DBG_PRINT_TEXT("Command: Erase") ;
-                if (BootloaderEmulator_COMMAND_ERASE ==
-                    packetBuffer[BootloaderEmulator_CMD_ADDR]) {
+                DBG_PUTS("Command: Erase") ;
+                if ( BootloaderEmulator_COMMAND_ERASE ==
+                     packetBuffer[BootloaderEmulator_CMD_ADDR] ) {
                     if ( (BootloaderEmulator_COMMUNICATION_STATE_ACTIVE ==
-                          communicationState) && (pktSize == 3u) ) {
+                          communicationState) && (pktSize == 3) ) {
                         /* Size of FLASH row (no ECC available) */
                         dataOffset = BootloaderEmulator_FROW_SIZE ;
 
@@ -508,45 +539,51 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
                     }
                 }
 
-#endif          /* (0u != BootloaderEmulator_CMD_ERASE_ROW_AVAIL) */
+#endif          /* (0 != BootloaderEmulator_CMD_ERASE_ROW_AVAIL) */
 
                 if ( (BootloaderEmulator_COMMUNICATION_STATE_ACTIVE ==
-                      communicationState) && (pktSize >= 3u) ) {
-                    /* The command may be sent along with the last block of data, to program the row. */
+                      communicationState) && (pktSize >= 3) ) {
+                    /* The command may be sent along with the last block of
+                      data, to program the row. */
                     (void) memcpy(&dataBuffer[dataOffset],
-                                  &packetBuffer[BootloaderEmulator_DATA_ADDR + 3u],
-                                  (uint32) pktSize - 3u) ;
+                                  &packetBuffer[BootloaderEmulator_DATA_ADDR +
+                                                3],
+                                  (uint32) pktSize - 3) ;
 
-                    dataOffset += (pktSize - 3u) ;
+                    dataOffset += (pktSize - 3) ;
 
                     /* Size of FLASH row (no ECC available) */
                     pktSize = CY_FLASH_SIZEOF_ROW ;
 
                     /* Check if we have all data to program */
-                    if (dataOffset == pktSize) {
+                    if ( dataOffset == pktSize ) {
                         uint16 row ;
                         //MZ uint8 counter;
                         uint32 size = CY_FLASH_SIZEOF_ROW ;
 
                         DBG_PRINTF("Have all the data to program.") ;
 
-                        /* Save 1st bootloadable application flash row number to the metadata in external memory */
-                        if (appSizeInRows == 0u) {
+                        /* Save 1st bootloadable application flash row number to
+                          the metadata in external memory */
+                        if ( appSizeInRows == 0 ) {
                             /* Get Flash row number inside of the array */
                             dataOffset =
-                                ( (uint16)( (uint16)packetBuffer[
-                                                BootloaderEmulator_DATA_ADDR
-                                                + 2u] <<
-                                            8u ) ) |
+                                ( (uint16) ( (uint16) packetBuffer[
+                                                 BootloaderEmulator_DATA_ADDR
+                                                 + 2] <<
+                                             8 ) ) |
                                 packetBuffer[
-                                    BootloaderEmulator_DATA_ADDR + 1u] ;
+                                    BootloaderEmulator_DATA_ADDR + 1] ;
 
                             /* btldrData  - holds flash array Id sent by host */
                             /* dataOffset - holds flash row Id sent by host   */
-                            row = (uint16)(btldrData * BootloaderEmulator_NUMBER_OF_ROWS_IN_ARRAY)
+                            row =
+                                (uint16) (btldrData *
+                                          BootloaderEmulator_NUMBER_OF_ROWS_IN_ARRAY)
                                 + dataOffset ;
 
-                            /* Save number of the bootloadable application first flash row */
+                            /* Save number of the bootloadable application first
+                              flash row */
                             appFirstRowNum = row ;
                             DBG_PRINTF(
                                 "appSizeinRows = 0. appFirstRowNum = %d",
@@ -554,40 +591,41 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
                         }
 
                         /* Erase metadata row */
-                        if (appSizeInRows == 0u) {
+                        if ( appSizeInRows == 0 ) {
                             /* Erase content of the external memory */
-                            //MZ uint8  erase[CY_FLASH_SIZEOF_ROW] = {0u};
-#if (DEBUG_UART_ENABLED == YES)
-                            uint8 tmp[CY_FLASH_SIZEOF_ROW] ;
-#endif                             /* #if (DEBUG_UART_ENABLED == YES) */
+                            //MZ uint8  erase[CY_FLASH_SIZEOF_ROW] = {0};
+//#if (DEBUG_UART_ENABLED == YES)
+//                            uint8 tmp[CY_FLASH_SIZEOF_ROW] ;
+//#endif                             /* #if (DEBUG_UART_ENABLED == YES) */
+//
+//#if (DEBUG_UART_ENABLED == YES)
+//                            (void) EMI_ReadData(EMI_MD_BASE_ADDR,
+//                                                CY_FLASH_SIZEOF_ROW,
+//                                                tmp) ;
+//#endif                             /* #if (DEBUG_UART_ENABLED == YES) */
 
-#if (DEBUG_UART_ENABLED == YES)
-                            (void) EMI_ReadData(EMI_MD_BASE_ADDR,
-                                                CY_FLASH_SIZEOF_ROW,
-                                                tmp) ;
-#endif                             /* #if (DEBUG_UART_ENABLED == YES) */
-//                            DBG_PRINT_TEXT(
+//                            DBG_PUTS(
 //                                "Metadata Row Before Erase: ") ;
 //                            DBG_PRINT_ARRAY(tmp, CY_FLASH_SIZEOF_ROW) ;
-//                            DBG_PRINT_TEXT("") ;
+//                            DBG_PUTS("") ;
 
                             /* Erase the entire external memory before writing.
                              */
                             DBG_PRINTF("Erasing metadata and entire app...") ;
-                            (void) EMI_EraseAll() ;
+                            CHECK( EMI_EraseAll() ) ;
 
-#if (DEBUG_UART_ENABLED == YES)
-                            (void) EMI_ReadData(EMI_MD_BASE_ADDR,
-                                                CY_FLASH_SIZEOF_ROW,
-                                                tmp) ;
-#endif                             /* #if (DEBUG_UART_ENABLED == YES) */
-//                            DBG_PRINT_TEXT("Metadata Row After Erase: ") ;
+//#if (DEBUG_UART_ENABLED == YES)
+//                            (void) EMI_ReadData(EMI_MD_BASE_ADDR,
+//                                                CY_FLASH_SIZEOF_ROW,
+//                                                tmp) ;
+//#endif                             /* #if (DEBUG_UART_ENABLED == YES) */
+//                            DBG_PUTS("Metadata Row After Erase: ") ;
 //                            DBG_PRINT_ARRAY(tmp, CY_FLASH_SIZEOF_ROW) ;
-//                            DBG_PRINT_TEXT("") ;
+//                            DBG_PUTS("") ;
                         }
 
                         /* External memory application checksum calculation */
-                        while (size > 0u) {
+                        while ( size > 0 ) {
                             size-- ;
                             appExtMemChecksum += dataBuffer[size] ;
                         }
@@ -599,69 +637,86 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
                                              EMI_APP_ABS_ADDR(appSizeInRows),
                                              CY_FLASH_SIZEOF_ROW,
                                              dataBuffer) ;
+#if (0 == BootloaderEmulator_CMD_VERIFY_ROW_AVAIL)
+                        DBG_PRINTF( "Verifico 0x%08X",
+                                    EMI_APP_ABS_ADDR(appSizeInRows) ) ;
+                        if ( EMI_verifica(EMI_APP_ABS_ADDR(appSizeInRows),
+                                          CY_FLASH_SIZEOF_ROW, dataBuffer) ) {
+                            appSizeInRows++ ;
+                            ackCode = CYRET_SUCCESS ;
+                        }
+                        else {
+                            ackCode = BootloaderEmulator_ERR_VERIFY ;
+                        }
+#else
+                        // Arrivera' il comando di verifica
                         appSizeInRows++ ;
+                        DBG_PRINTF( "EMI Address: 0x%04X",
+                                    EMI_APP_ABS_ADDR(appSizeInRows - 1) ) ;
 
-                        DBG_PRINTF("EMI Address: 0x%04X", EMI_APP_ABS_ADDR(appSizeInRows - 1u)) ;
-
-                        DBG_PRINTF("numOfTxedRows = 0x%02X", appSizeInRows - 1u) ;
+                        DBG_PRINTF("numOfTxedRows = 0x%02X", appSizeInRows - 1) ;
 
                         ackCode = CYRET_SUCCESS ;
+#endif
                     }
                     else {
                         ackCode = BootloaderEmulator_ERR_LENGTH ;
                     }
 
-                    dataOffset = 0u ;
+                    dataOffset = 0 ;
                 }
                 break ;
 
                 /***************************************************************************
                 *   Sync bootloader
                 ***************************************************************************/
-#if (0u != BootloaderEmulator_CMD_SYNC_BOOTLOADER_AVAIL)
+#if (0 != BootloaderEmulator_CMD_SYNC_BOOTLOADER_AVAIL)
 
             case BootloaderEmulator_COMMAND_SYNC:
 
-                DBG_PRINT_TEXT("Command: Sync") ;
-                if (BootloaderEmulator_COMMUNICATION_STATE_ACTIVE ==
-                    communicationState) {
-                    /* If something failed the host would send this command to reset the bootloader. */
-                    dataOffset = 0u ;
+                DBG_PUTS("Command: Sync") ;
+                if ( BootloaderEmulator_COMMUNICATION_STATE_ACTIVE ==
+                     communicationState ) {
+                    /* If something failed the host would send this command to
+                      reset the bootloader. */
+                    dataOffset = 0 ;
 
-                    /* Don't acknowledge the packet, just get ready to accept the next one */
+                    /* Don't acknowledge the packet, just get ready to accept
+                      the next one */
                     continue ;
                 }
                 break ;
 
-#endif              /* (0u != BootloaderEmulator_CMD_SYNC_BOOTLOADER_AVAIL) */
+#endif              /* (0 != BootloaderEmulator_CMD_SYNC_BOOTLOADER_AVAIL) */
 
                 /***************************************************************************
                 *   Send data
                 ***************************************************************************/
-#if (0u != BootloaderEmulator_CMD_SEND_DATA_AVAIL)
+#if (0 != BootloaderEmulator_CMD_SEND_DATA_AVAIL)
 
             case BootloaderEmulator_COMMAND_DATA:
-                DBG_PRINT_TEXT("Command: Data. ") ;
-                if (BootloaderEmulator_COMMUNICATION_STATE_ACTIVE ==
-                    communicationState) {
-                    /*  Make sure that dataOffset is valid before copying the data */
+                DBG_PUTS("Command: Data. ") ;
+                if ( BootloaderEmulator_COMMUNICATION_STATE_ACTIVE ==
+                     communicationState ) {
+                    /*  Make sure that dataOffset is valid before copying the
+                      data */
                     if ( (dataOffset + pktSize) <=
                          BootloaderEmulator_SIZEOF_COMMAND_BUFFER ) {
                         //MZ uint16 i;
 
                         ackCode = CYRET_SUCCESS ;
 
- #if (CY_PSOC3)
+#if (CY_PSOC3)
                         (void) memcpy(&dataBuffer[dataOffset],
                                       &packetBuffer[
                                           BootloaderEmulator_DATA_ADDR],
-                                      ( int16 )pktSize) ;
- #else
+                                      ( int16 ) pktSize) ;
+#else
                         (void) memcpy(&dataBuffer[dataOffset],
                                       &packetBuffer[
                                           BootloaderEmulator_DATA_ADDR],
                                       (uint32) pktSize) ;
- #endif                             /* (CY_PSOC3) */
+#endif                              /* (CY_PSOC3) */
 
                         dataOffset += pktSize ;
                     }
@@ -672,15 +727,15 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
 
                 break ;
 
-#endif              /* (0u != BootloaderEmulator_CMD_SEND_DATA_AVAIL) */
+#endif              /* (0 != BootloaderEmulator_CMD_SEND_DATA_AVAIL) */
 
             /***************************************************************************
             *   Enter bootloader
             ***************************************************************************/
             case BootloaderEmulator_COMMAND_ENTER:
 
-                DBG_PRINT_TEXT("Command: Enter. ") ;
-                if (pktSize == 0u) {
+                DBG_PUTS("Command: Enter. ") ;
+                if ( pktSize == 0 ) {
                     uint32 i ;
 
                     BootloaderEmulator_ENTER CYDATA BtldrVersion = {
@@ -700,23 +755,23 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
                     DBG_PRINTF("Initializing...") ;
 
                     /* Perform initializations */
-                    appSizeInRows = 0u ;
-                    appExtMemChecksum = 0u ;
-                    for (i = 0u ; i < CY_FLASH_SIZEOF_ROW ; i++ ) {
-                        metadata[i] = 0u ;
+                    appSizeInRows = 0 ;
+                    appExtMemChecksum = 0 ;
+                    for ( i = 0 ; i < CY_FLASH_SIZEOF_ROW ; i++ ) {
+                        metadata[i] = 0 ;
                     }
 
 #if (ENCRYPTION_ENABLED == YES)
                     /*Generate key*/
                     CR_GenerateKey(emiKey) ;
-                    DBG_PRINT_TEXT("Generated Key: ") ;
+                    DBG_PUTS("Generated Key: ") ;
                     DBG_PRINT_ARRAY(emiKey, KEY_LENGTH) ;
-                    DBG_PRINT_TEXT("") ;
+                    DBG_PUTS("") ;
                     CR_WriteKey(emiKey) ;
                     CR_ReadKey(emiKey) ;
-                    DBG_PRINT_TEXT("Read Key     : ") ;
+                    DBG_PUTS("Read Key     : ") ;
                     DBG_PRINT_ARRAY(emiKey, KEY_LENGTH) ;
-                    DBG_PRINT_TEXT("") ;
+                    DBG_PUTS("") ;
 #endif                     /*(ENCRYPTION_ENABLED == YES)*/
 
                     ackCode = CYRET_SUCCESS ;
@@ -726,74 +781,75 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
                 /***************************************************************************
                 *   Verify row
                 ***************************************************************************/
-#if (0u != BootloaderEmulator_CMD_VERIFY_ROW_AVAIL)
+#if (0 != BootloaderEmulator_CMD_VERIFY_ROW_AVAIL)
 
             case BootloaderEmulator_COMMAND_VERIFY:
-
-                DBG_PRINT_TEXT("Command: Verify") ;
+            	// Inutile, ma se manca cysmart non va avanti
+                DBG_PUTS("Command: Verify") ;
                 if ( (BootloaderEmulator_COMMUNICATION_STATE_ACTIVE ==
-                      communicationState) && (pktSize == 3u) ) {
+                      communicationState) && (pktSize == 3) ) {
                     uint8 CYDATA checksum ;
 
                     checksum =
-                        BootloaderEmulator_Calc8BitSum(appSizeInRows - 1u) ;
+                        BootloaderEmulator_Calc8BitSum(appSizeInRows - 1) ;
 
-                    packetBuffer[BootloaderEmulator_DATA_ADDR] = (uint8)1u +
-                                                                 (uint8)(~
-                                                                         checksum) ;
+                    packetBuffer[BootloaderEmulator_DATA_ADDR] = (uint8) 1 +
+                                                                 (uint8) (~
+                                                                          checksum) ;
                     ackCode = CYRET_SUCCESS ;
-                    rspSize = 1u ;
+                    rspSize = 1 ;
 
-                    DBG_PRINT_TEXT("") ;
-                    DBG_PRINTF("\t\tRow Checksum: 0x%04X", packetBuffer[BootloaderEmulator_DATA_ADDR]) ;
+                    DBG_PUTS("") ;
+                    DBG_PRINTF("\t\tRow Checksum: 0x%04X",
+                               packetBuffer[BootloaderEmulator_DATA_ADDR]) ;
                 }
                 break ;
 
-#endif             /* (0u != BootloaderEmulator_CMD_VERIFY_ROW_AVAIL) */
+#endif             /* (0 != BootloaderEmulator_CMD_VERIFY_ROW_AVAIL) */
 
             /***************************************************************************
             *   Exit bootloader
             ***************************************************************************/
             case BootloaderEmulator_COMMAND_EXIT:
 
-                DBG_PRINT_TEXT("Command: Exit.") ;
+                DBG_PUTS("Command: Exit.") ;
                 if ( CYRET_SUCCESS ==
                      BootloaderEmulator_ValidateBootloadable() ) {
                     BootloaderEmulator_SET_RUN_TYPE(
                         BootloaderEmulator_SCHEDULE_BTLDR) ;
 
-                    DBG_PRINT_TEXT("") ;
-                    DBG_PRINT_TEXT("Bootloadable Application is valid.") ;
+                    DBG_PUTS("") ;
+                    DBG_PUTS("Bootloadable Application is valid.") ;
                     metadata[EMI_MD_APP_STATUS_ADDR] = EMI_MD_APP_STATUS_VALID ;
                     metadata[EMI_MD_ENCRYPTION_STATUS_ADDR] =
                         ENCRYPTION_ENABLED ;
                 }
                 else {
-                    DBG_PRINT_TEXT("") ;
-                    DBG_PRINT_TEXT("Bootloadable Application is invalid.") ;
+                    DBG_PUTS("") ;
+                    DBG_PUTS("Bootloadable Application is invalid.") ;
                     metadata[EMI_MD_APP_STATUS_ADDR] =
                         EMI_MD_APP_STATUS_INVALID ;
                 }
 
                 /* Update metadata section and save it to the external memory */
 
-                metadata[EMI_MD_APP_SIZE_IN_ROWS_ADDR      ] =
+                metadata[EMI_MD_APP_SIZE_IN_ROWS_ADDR] =
                     LO8(appSizeInRows) ;
                 metadata[EMI_MD_APP_SIZE_IN_ROWS_ADDR +
-                         1u ] = HI8(appSizeInRows) ;
-                metadata[EMI_MD_APP_FIRST_ROW_NUM_ADDR     ] = LO8(
+                         1] = HI8(appSizeInRows) ;
+                metadata[EMI_MD_APP_FIRST_ROW_NUM_ADDR] = LO8(
                     appFirstRowNum) ;
-                metadata[EMI_MD_APP_FIRST_ROW_NUM_ADDR + 1u] = HI8(
+                metadata[EMI_MD_APP_FIRST_ROW_NUM_ADDR + 1] = HI8(
                     appFirstRowNum) ;
-                appExtMemChecksum = ( uint16 )1u +
-                                    ( uint16 )(~appExtMemChecksum) ;
-                metadata[EMI_MD_APP_EM_CHECKSUM_ADDR     ] = LO8(
+                appExtMemChecksum = ( uint16 ) 1 +
+                                    ( uint16 ) (~appExtMemChecksum) ;
+                metadata[EMI_MD_APP_EM_CHECKSUM_ADDR] = LO8(
                     appExtMemChecksum) ;
-                metadata[EMI_MD_APP_EM_CHECKSUM_ADDR + 1u] = HI8(
+                metadata[EMI_MD_APP_EM_CHECKSUM_ADDR + 1] = HI8(
                     appExtMemChecksum) ;
-                metadata[EMI_MD_EXTERNAL_MEMORY_PAGE_SIZE_ADDR     ] = LO8(
+                metadata[EMI_MD_EXTERNAL_MEMORY_PAGE_SIZE_ADDR] = LO8(
                     EMI_EXTERNAL_MEMORY_PAGE_SIZE) ;
-                metadata[EMI_MD_EXTERNAL_MEMORY_PAGE_SIZE_ADDR + 1u] = HI8(
+                metadata[EMI_MD_EXTERNAL_MEMORY_PAGE_SIZE_ADDR + 1] = HI8(
                     EMI_EXTERNAL_MEMORY_PAGE_SIZE) ;
 
                 (void) EMI_WriteData(NOR_FLASH_INSTRUCTION_PP,
@@ -801,22 +857,25 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
                                      CY_FLASH_SIZEOF_ROW,
                                      metadata) ;
 
-                DBG_PRINTF("\t\tApplication Status: 0x%02X", metadata[EMI_MD_APP_STATUS_ADDR]) ;
+                DBG_PRINTF("\t\tApplication Status: 0x%02X",
+                           metadata[EMI_MD_APP_STATUS_ADDR]) ;
 
-                DBG_PRINTF("\t\tSize Application in Rows: 0x%04X", appSizeInRows) ;
+                DBG_PRINTF("\t\tSize Application in Rows: 0x%04X",
+                           appSizeInRows) ;
 
                 DBG_PRINTF("\t\tFirst Flash Row Number: 0x%04X", appFirstRowNum) ;
 
-                DBG_PRINTF("\t\tExternal Memory Page Size: 0x%02X KB", metadata[EMI_MD_EXTERNAL_MEMORY_PAGE_SIZE_ADDR]) ;
+                DBG_PRINTF("\t\tExternal Memory Page Size: 0x%02X KB",
+                           metadata[EMI_MD_EXTERNAL_MEMORY_PAGE_SIZE_ADDR]) ;
 
-                DBG_PRINT_TEXT(
+                DBG_PUTS(
                     "===============================================================================") ;
-                DBG_PRINT_TEXT(
+                DBG_PUTS(
                     "=    BLE_External_Memory_Bootloadable Application Performs Software Reset     =") ;
-                DBG_PRINT_TEXT(
+                DBG_PUTS(
                     "===============================================================================") ;
-                DBG_PRINT_TEXT("") ;
-                DBG_PRINT_TEXT("") ;
+                DBG_PUTS("") ;
+                DBG_PUTS("") ;
 
                 CySoftwareReset() ;
 
@@ -827,6 +886,8 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
             *   Unsupported command
             ***************************************************************************/
             default:
+                DBG_ERR ;
+                DBG_PRINTF("\t? cmd %02X ?",packetBuffer[BootloaderEmulator_CMD_ADDR]);
                 ackCode = BootloaderEmulator_ERR_CMD ;
                 break ;
             }
@@ -837,7 +898,7 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
 
         // MZ: un comando alla volta
         break ;
-    } while ( (0u == timeOut) ||
+    } while ( (0 == timeOut) ||
               (BootloaderEmulator_COMMUNICATION_STATE_ACTIVE ==
                communicationState) ) ;
 }
@@ -862,9 +923,10 @@ void BootloaderEmulator_HostLink(const uint8 timeOut)
 *   CYRET_SUCCESS if successful. Any other non-zero value if failure occurred.
 *
 *******************************************************************************/
-static cystatus BootloaderEmulator_WritePacket(uint8 status,
-                                               uint8 buffer[],
-                                               uint16 size)
+static cystatus BootloaderEmulator_WritePacket(
+    uint8 status,
+    uint8 buffer[],
+    uint16 size)
 {
     uint16 CYDATA checksum ;
 
@@ -872,7 +934,7 @@ static cystatus BootloaderEmulator_WritePacket(uint8 status,
     buffer[BootloaderEmulator_SOP_ADDR] = BootloaderEmulator_SOP ;
     buffer[BootloaderEmulator_CMD_ADDR] = status ;
     buffer[BootloaderEmulator_SIZE_ADDR] = LO8(size) ;
-    buffer[BootloaderEmulator_SIZE_ADDR + 1u] = HI8(size) ;
+    buffer[BootloaderEmulator_SIZE_ADDR + 1] = HI8(size) ;
 
     /* Compute checksum. */
     checksum = BootloaderEmulator_CalcPacketChecksum(
@@ -881,23 +943,31 @@ static cystatus BootloaderEmulator_WritePacket(uint8 status,
         BootloaderEmulator_DATA_ADDR) ;
 
     buffer[BootloaderEmulator_CHK_ADDR(size)] = LO8(checksum) ;
-    buffer[BootloaderEmulator_CHK_ADDR(1u + size)] = HI8(checksum) ;
+    buffer[BootloaderEmulator_CHK_ADDR(1 + size)] = HI8(checksum) ;
     buffer[BootloaderEmulator_EOP_ADDR(size)] = BootloaderEmulator_EOP ;
+    DBG_PRINTF("notifico %s", (0 == status) ? "OK" : "ERR") ;
 
     /* Start packet transmit. */
-    return( CyBLE_CyBtldrCommWrite(buffer,
-                                   size + BootloaderEmulator_MIN_PKT_SIZE,
-                                   &size, 150u) ) ;
+    cystatus ris = CyBLE_CyBtldrCommWrite(
+        buffer,
+        size + BootloaderEmulator_MIN_PKT_SIZE,
+        &size,
+        150) ;
+    if ( ris != CYRET_SUCCESS ) {
+        DBG_PRINTF("? %08X = CyBLE_CyBtldrCommWrite ?", ris) ;
+    }
+    return ris ;
 }
 
 /* [] END OF FILE */
 #else
 
-void BootloaderEmulator_iniz(void) {}
+void BootloaderEmulator_iniz(void)
+{}
+
 void BootloaderEmulator_HostLink(const uint8 x)
 {
-	UNUSED(x) ;
+    UNUSED(x) ;
 }
-
 
 #endif

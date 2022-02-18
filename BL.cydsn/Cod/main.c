@@ -25,10 +25,7 @@ int main()
 {
     CyGlobalIntEnable;
 
-#if (DEBUG_UART_ENABLED == YES)
-	UDI_Start();
-#endif /* (DEBUG_UART_ENABLED == YES) */
-
+    DBG_INIZ ;
 
     DBG_PRINT_TEXT("");
     DBG_PRINT_TEXT("");

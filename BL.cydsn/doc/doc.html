@@ -87,16 +87,31 @@
 			</tr>
 		</table>
 		
+		<P>&starf;
+		
+		<P>Il bootloader copia il nuovo firmware dalla flash esterna (detta <CODE>XMEM</CODE>)
+		a quella interna
+		
+		<P>&starf;
+		
 		<P>Copiare il progetto e aggiungerlo al <CITE>workspace</CITE>
 		
 		<P>Se necessario, modificare il processore e inizializzare i pin di uscita
 		
 		<P>Aggiornare i componenti
 		
+		<P>&starf;
+		
 		<P>Le stampe di debug avvengono tramite la seriale sw <CODE>UDI</CODE>, cartella <CODE>lib/diario</CODE>
+		
+		<P>Nel caso, definire <CODE>STAMPA_DBG</CODE> nei file che interessano e abilitare <CODE>UDI</CODE>
+		
+		<P>&starf;
 		
 		<P>L'accesso alla memoria esterna &egrave; a carico di <CODE>lib/xmem</CODE>: aggiornare, se serve,
 		col dispositivo utilizzato
+		
+		<P>&starf;
 		
 		<P>Se si usa la ram non inizializzata conviene evitare <CODE>CY_NOINIT</CODE>: occorre dichiarare le stesse variabili
 		sia in BL che in APP, per cui, dopo la <CITE>sop</CITE>, non &egrave; pi&ugrave; possibile. L'unica variabile da
@@ -118,10 +133,19 @@ CY_NOINIT uint32_t causa ;
 		
 		<P>Naturalmente le dimensioni dello stack e dell'heap si possono cambiare solo in <CODE>cm0gcc.ld</CODE>
 		
+		<P><UL>Confrontare <CODE>bl_emu/cm0gcc.ld</CODE> con <CODE>BL.cydsn/Generated_Source/PSoC4/cm0gcc.ld</CODE>
+			per assicurarsi che siano uguali:
+			<LI>la sezione <CODE>MEMORY</CODE> 
+			<LI>il simbolo <CODE>CY_FLASH_ROW_SIZE</CODE>
+		</UL>
+		
+		<P>&starf;
+		
 		<P>Quando il BL &egrave; stabile, cio&egrave; alla <CITE>sop</CITE>, 
 		copiare <CODE>bl.hex</CODE>, <CODE>bl.elf</CODE> e <CODE>bl.map</CODE> nella cartella <CODE>bin</CODE>
 		e impostare il <CITE>bootloadable</CITE> su quei file
 
+		<P>In alternativa, usare lo script in <CODE>copia</CODE>
 		
 	<h2>Applicazione</h2>
 	
@@ -149,6 +173,12 @@ CY_NOINIT uint32_t causa ;
 			<td>Accede alla memoria esterna come l'omonimo file del bootloader, ma implementa anche un timeout per non restare perennemente in aggiornamento </td>
 			</tr>
 		</table>
+		
+		<P>La macro:
+<PRE>
+#define BootloaderEmulator_CMD_VERIFY_ROW_AVAIL       (1)
+</PRE>		
+		serve solo se si vuole provare l'aggiornamento con <CITE>CySmart</CITE>. In caso contrario impostare a <CODE>0</CODE>
 		
 		<P>Aggiungere il <CITE>bootloadable</CITE> e farlo puntare alla cartella <CODE>bin</CODE> del BL
 		

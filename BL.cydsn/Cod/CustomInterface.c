@@ -20,30 +20,24 @@
 * WITH REGARD TO THIS SOFTWARE, INCLUDING, BUT NOT LIMITED TO, NONINFRINGEMENT,
 * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 *******************************************************************************/
-#define STAMPA_DBG
+//#define STAMPA_DBG
 #include "main.h"
 
 #include "CustomInterface.h"
 #include "ExternalMemoryInterface.h"
-//#include "cytypes.h"
-//#include "debug.h"
-//#include "CyFlash.h"
 
-uint8  metadata[CY_FLASH_SIZEOF_ROW];
+uint8 metadata[CY_FLASH_SIZEOF_ROW] ;
 
+uint32 communicationState = CI_COMMUNICATION_STATE_IDLE ;
+uint32 numOfRxedRows ;
+uint16 numOfRows ;
+uint16 rowIdx ;
 
+uint16 flashRowTotal ;
+uint16 appFirstRowNum ;
 
-uint32 communicationState = CI_COMMUNICATION_STATE_IDLE;
-uint32 numOfRxedRows;
-uint16 numOfRows;
-uint16 rowIdx;
-
-uint16 flashRowTotal;
-uint16 appFirstRowNum;
-
-static uint16 CI_CalcExtMemAppChecksum(void);
-static cystatus CI_WritePacket(uint8 status, uint8 buffer[], uint16 size);
-
+static uint16 CI_CalcExtMemAppChecksum(void) ;
+static cystatus CI_WritePacket(uint8 status, uint8 buffer[], uint16 size) ;
 
 /*******************************************************************************
 * Function Name: CyBtldrCommRead
@@ -59,72 +53,81 @@ static cystatus CI_WritePacket(uint8 status, uint8 buffer[], uint16 size);
 *  None
 *
 *******************************************************************************/
-cystatus CyBtldrCommRead(uint8* buffer, uint16 size, uint16* count, uint8 timeOut)
+cystatus CyBtldrCommRead(uint8 * buffer,
+                         uint16 size,
+                         uint16 * count,
+                         uint8 timeOut)
 {
-    cystatus rspCode  = CYRET_UNKNOWN;
-    uint32 rspSize = 0u;
-    uint16 appExtMemChecksum;
+    cystatus rspCode = CYRET_UNKNOWN ;
+    uint32 rspSize = 0u ;
+    uint16 appExtMemChecksum ;
 
-    if(CI_COMMUNICATION_STATE_IDLE == communicationState)
-    {
+    if (CI_COMMUNICATION_STATE_IDLE == communicationState) {
         /* Generate Enter Bootloader packet */
-        communicationState = CI_COMMUNICATION_STATE_ACTIVE;
+        communicationState = CI_COMMUNICATION_STATE_ACTIVE ;
 
         /* Read metadata section from external memory */
-        (void) EMI_ReadData(EMI_MD_BASE_ADDR, CY_FLASH_SIZEOF_ROW , metadata);
+        (void) EMI_ReadData(EMI_MD_BASE_ADDR, CY_FLASH_SIZEOF_ROW, metadata) ;
 
-        appFirstRowNum = ((uint16)((uint16)metadata[EMI_MD_APP_FIRST_ROW_NUM_ADDR + 1u] << 8u)) |
-                                        metadata[EMI_MD_APP_FIRST_ROW_NUM_ADDR];
+        appFirstRowNum =
+            ( (uint16) ( (uint16) metadata[EMI_MD_APP_FIRST_ROW_NUM_ADDR +
+                                           1u] << 8u ) ) |
+            metadata[EMI_MD_APP_FIRST_ROW_NUM_ADDR] ;
 
-        flashRowTotal = ((uint16)((uint16)metadata[EMI_MD_APP_SIZE_IN_ROWS_ADDR + 1u] << 8u)) |
-                                        metadata[EMI_MD_APP_SIZE_IN_ROWS_ADDR];
+        flashRowTotal =
+            ( (uint16) ( (uint16) metadata[EMI_MD_APP_SIZE_IN_ROWS_ADDR +
+                                           1u] << 8u ) ) |
+            metadata[EMI_MD_APP_SIZE_IN_ROWS_ADDR] ;
 
+        appExtMemChecksum =
+            ( (uint16) ( (uint16) metadata[EMI_MD_APP_EM_CHECKSUM_ADDR +
+                                           1u] << 8u ) ) |
+            metadata[EMI_MD_APP_EM_CHECKSUM_ADDR] ;
 
-        appExtMemChecksum = ((uint16)((uint16)metadata[EMI_MD_APP_EM_CHECKSUM_ADDR + 1u] << 8u)) |
-                                        metadata[EMI_MD_APP_EM_CHECKSUM_ADDR];
+        DBG_PRINT_TEXT("") ;
 
-        DBG_PRINT_TEXT("");
+        DBG_PRINTF("\t\t\t Metadata: Application Image Status: 0x%02X",
+                   metadata[EMI_MD_APP_STATUS_ADDR]) ;
 
-        DBG_PRINTF("\t\t\t Metadata: Application Image Status: 0x%02X", metadata[EMI_MD_APP_STATUS_ADDR]);
+        DBG_PRINTF("\t\t\t Metadata: Image Size (in flash rows): 0x%04X",
+                   flashRowTotal) ;
 
-        DBG_PRINTF("\t\t\t Metadata: Image Size (in flash rows): 0x%04X", flashRowTotal);
+        DBG_PRINTF("\t\t\t Metadata: Start of image in flash (row #): 0x%04X",
+                   appFirstRowNum) ;
 
-        DBG_PRINTF("\t\t\t Metadata: Start of image in flash (row #): 0x%04X", appFirstRowNum);
+        DBG_PRINTF("\t\t\t Metadata: Application checksum: 0x%04X",
+                   appExtMemChecksum) ;
 
-        DBG_PRINTF("\t\t\t Metadata: Application checksum: 0x%04X", appExtMemChecksum);
+        DBG_PRINTF("\t\t\t Metadata: Encryption Enabled: 0x%02X",
+                   metadata[EMI_MD_ENCRYPTION_STATUS_ADDR]) ;
 
-        DBG_PRINTF("\t\t\t Metadata: Encryption Enabled: 0x%02X", metadata[EMI_MD_ENCRYPTION_STATUS_ADDR]);
-        
-        encryptionEnabled = metadata[EMI_MD_ENCRYPTION_STATUS_ADDR];
+        encryptionEnabled = metadata[EMI_MD_ENCRYPTION_STATUS_ADDR] ;
 
         /* Check application checksum in the external memory */
-        if (CI_CalcExtMemAppChecksum() != appExtMemChecksum)
-        {
+        if (CI_CalcExtMemAppChecksum() != appExtMemChecksum) {
             /* Mark application as invalid when checksum verification failed */
-            metadata[EMI_MD_APP_STATUS_ADDR] = EMI_MD_APP_STATUS_INVALID;
+            metadata[EMI_MD_APP_STATUS_ADDR] = EMI_MD_APP_STATUS_INVALID ;
         }
 
-
-        if(metadata[EMI_MD_APP_STATUS_ADDR] == EMI_MD_APP_STATUS_VALID)
-        {
+        if (metadata[EMI_MD_APP_STATUS_ADDR] == EMI_MD_APP_STATUS_VALID) {
             /* Start copying bootloadable application from external memory */
 
             /* Generate Enter Bootloader Command */
-            buffer[CI_CMD_ADDR] = CI_COMMAND_ENTER;
-            *count = CI_COMMAND_ENTER_PACKET_SIZE;
-            rspSize = CI_COMMAND_ENTER_PACKET_DATA_SIZE;
-            rspCode = CYRET_SUCCESS;
+            buffer[CI_CMD_ADDR] = CI_COMMAND_ENTER ;
+            *count = CI_COMMAND_ENTER_PACKET_SIZE ;
+            rspSize = CI_COMMAND_ENTER_PACKET_DATA_SIZE ;
+            rspCode = CYRET_SUCCESS ;
 
             /* Perform custom interface initial initializations */
-            rowIdx = 0u;
+            rowIdx = 0u ;
 
-            DBG_PRINT_TEXT("");
-            DBG_PRINT_TEXT("\t\tApplication Status in External Memory: VALID");
-            DBG_PRINT_TEXT("\t\t\tCopy bootloadable application from external memory.");
+            DBG_PRINT_TEXT("") ;
+            DBG_PRINT_TEXT("\t\tApplication Status in External Memory: VALID") ;
+            DBG_PRINT_TEXT(
+                "\t\t\tCopy bootloadable application from external memory.") ;
         }
-        else if (metadata[EMI_MD_APP_STATUS_ADDR] == EMI_MD_APP_STATUS_LOADED)
-        {
-
+        else if (metadata[EMI_MD_APP_STATUS_ADDR] ==
+                 EMI_MD_APP_STATUS_LOADED) {
             /*******************************************************************
             * If the bootloadable application in the internal flash is valid,
             * schedule the specified application and perform software reset to
@@ -134,43 +137,49 @@ cystatus CyBtldrCommRead(uint8* buffer, uint16 size, uint16* count, uint8 timeOu
             * valid, try to update bootloadable application from the external
             * flash memory.
             *******************************************************************/
-            if(CYRET_SUCCESS == Bootloader_ValidateBootloadable(Bootloader_EXIT_TO_BTLDB))
-            {
-                (void) Bootloader_Exit(Bootloader_EXIT_TO_BTLDB);
+            if ( CYRET_SUCCESS ==
+                 Bootloader_ValidateBootloadable(Bootloader_EXIT_TO_BTLDB) ) {
+                (void) Bootloader_Exit(Bootloader_EXIT_TO_BTLDB) ;
             }
-            else
-            {
-                /* Start copying bootloadable application from external memory */
+            else {
+                /* Start copying bootloadable application from external memory
+                  */
 
                 /* Generate Enter Bootloader Command */
-                buffer[CI_CMD_ADDR] = CI_COMMAND_ENTER;
-                *count = CI_COMMAND_ENTER_PACKET_SIZE;
-                rspSize = CI_COMMAND_ENTER_PACKET_DATA_SIZE;
-                rspCode = CYRET_SUCCESS;
+                buffer[CI_CMD_ADDR] = CI_COMMAND_ENTER ;
+                *count = CI_COMMAND_ENTER_PACKET_SIZE ;
+                rspSize = CI_COMMAND_ENTER_PACKET_DATA_SIZE ;
+                rspCode = CYRET_SUCCESS ;
 
                 /* Perform custom interface initial initializations */
-                rowIdx = 0u;
+                rowIdx = 0u ;
 
-                DBG_PRINT_TEXT("");
-                DBG_PRINT_TEXT("\t\tApplication Status in External Memory: LOADED.");
-                DBG_PRINT_TEXT("\t\tApplication in the internal FLASH: INVALID.");
-                DBG_PRINT_TEXT("\t\t\tCopy bootloadable application from external memory.");
+                DBG_PRINT_TEXT("") ;
+                DBG_PRINT_TEXT(
+                    "\t\tApplication Status in External Memory: LOADED.") ;
+                DBG_PRINT_TEXT(
+                    "\t\tApplication in the internal FLASH: INVALID.") ;
+                DBG_PRINT_TEXT(
+                    "\t\t\tCopy bootloadable application from external memory.") ;
             }
 
-            DBG_PRINT_TEXT("");
-            DBG_PRINT_TEXT("\t\tApplication status: LOADED");
-            DBG_PRINT_TEXT("\t\t\tSchedule bootloadable application and reset device.");
+            DBG_PRINT_TEXT("") ;
+            DBG_PRINT_TEXT("\t\tApplication status: LOADED") ;
+            DBG_PRINT_TEXT(
+                "\t\t\tSchedule bootloadable application and reset device.") ;
 
-            DBG_PRINT_TEXT("");
-            DBG_PRINT_TEXT("");
-            DBG_PRINT_TEXT("===============================================================================");
-            DBG_PRINT_TEXT("=    BLE_External_Memory_Bootloader Application Performs Software Reset       =");
-            DBG_PRINT_TEXT("===============================================================================");
-            DBG_PRINT_TEXT("");
-            DBG_PRINT_TEXT("");
+            DBG_PRINT_TEXT("") ;
+            DBG_PRINT_TEXT("") ;
+            DBG_PRINT_TEXT(
+                "===============================================================================") ;
+            DBG_PRINT_TEXT(
+                "=    BLE_External_Memory_Bootloader Application Performs Software Reset       =") ;
+            DBG_PRINT_TEXT(
+                "===============================================================================") ;
+            DBG_PRINT_TEXT("") ;
+            DBG_PRINT_TEXT("") ;
         }
-        else
-        {
+        else {
             /*******************************************************************
             * The external memory metadata does not contain any information that
             * application image is present in the external memory, or the
@@ -179,94 +188,100 @@ cystatus CyBtldrCommRead(uint8* buffer, uint16 size, uint16* count, uint8 timeOu
             * Try to launch bootloadable application if it is valid. If the
             * bootloadable application in invalid, halt device.
             *******************************************************************/
-            if(CYRET_SUCCESS == Bootloader_ValidateBootloadable(Bootloader_MD_BTLDB_ACTIVE_0))
+            if ( CYRET_SUCCESS ==
+                 Bootloader_ValidateBootloadable(Bootloader_MD_BTLDB_ACTIVE_0) )
             {
-                (void) Bootloader_Exit(Bootloader_EXIT_TO_BTLDB);
+                (void) Bootloader_Exit(Bootloader_EXIT_TO_BTLDB) ;
             }
-            else
-            {
-                DBG_PRINT_TEXT("");
-                DBG_PRINT_TEXT("\t\tApplication Status in External Memory: UNKNOWN.");
-                DBG_PRINT_TEXT("\t\tApplication status: INVALID.");
-                DBG_PRINT_TEXT("\t\t\tHalt Device.");
-                CyHalt(0x00u);
+            else {
+                DBG_PRINT_TEXT("") ;
+                DBG_PRINT_TEXT(
+                    "\t\tApplication Status in External Memory: UNKNOWN.") ;
+                DBG_PRINT_TEXT("\t\tApplication status: INVALID.") ;
+                DBG_PRINT_TEXT("\t\t\tHalt Device.") ;
+                CyHalt(0x00u) ;
             }
         }
     }
-    else
-    {
-        if (CI_COMMUNICATION_STATE_ACTIVE == communicationState)
-        {
-
-            if (flashRowTotal >= rowIdx)
-            {
+    else {
+        if (CI_COMMUNICATION_STATE_ACTIVE == communicationState) {
+            if (flashRowTotal >= rowIdx) {
                 /* Generate Program Row Command */
-                uint16 appFirstRowNumInArray;
+                uint16 appFirstRowNumInArray ;
 
-                if (appFirstRowNum > CI_FLASH_ROWS_IN_ARRAY)
-                {
-                    appFirstRowNumInArray = appFirstRowNum - (CI_FLASH_ROWS_IN_ARRAY + 1u);
+                if (appFirstRowNum > CI_FLASH_ROWS_IN_ARRAY) {
+                    appFirstRowNumInArray = appFirstRowNum -
+                                            (CI_FLASH_ROWS_IN_ARRAY + 1u) ;
                 }
-                else
-                {
-                    appFirstRowNumInArray = appFirstRowNum;
+                else {
+                    appFirstRowNumInArray = appFirstRowNum ;
                 }
 
-                buffer[CI_CMD_ADDR      ] = CI_COMMAND_PROGRAM;
-                buffer[CI_DATA_ADDR     ] = CY_FLASH_GET_MACRO_FROM_ROW(appFirstRowNum);
-                buffer[CI_DATA_ADDR + 1u] = LO8(appFirstRowNumInArray);
-                buffer[CI_DATA_ADDR + 2u] = HI8(appFirstRowNumInArray);
-                (void) EMI_ReadData(EMI_APP_ABS_ADDR(rowIdx), CY_FLASH_SIZEOF_ROW, (uint8 *) (buffer + CI_DATA_ADDR + 3u));
+                buffer[CI_CMD_ADDR      ] = CI_COMMAND_PROGRAM ;
+                buffer[CI_DATA_ADDR     ] = CY_FLASH_GET_MACRO_FROM_ROW(
+                    appFirstRowNum) ;
+                buffer[CI_DATA_ADDR + 1u] = LO8(appFirstRowNumInArray) ;
+                buffer[CI_DATA_ADDR + 2u] = HI8(appFirstRowNumInArray) ;
+                (void) EMI_ReadData( EMI_APP_ABS_ADDR(
+                                         rowIdx), CY_FLASH_SIZEOF_ROW,
+                                     (uint8 *) (buffer + CI_DATA_ADDR + 3u) ) ;
 
-                if((flashRowTotal - 1u)  == rowIdx)
-                {
+                if ( (flashRowTotal - 1u) == rowIdx ) {
                     /* Update metadata flash row */
-                    buffer[CI_DATA_ADDR     ] = CY_FLASH_GET_MACRO_FROM_ROW(CY_FLASH_NUMBER_ROWS - 1u);
-                    buffer[CI_DATA_ADDR + 1u] = LO8(CY_FLASH_NUMBER_ROWS - 2u - CI_FLASH_ROWS_IN_ARRAY);
-                    buffer[CI_DATA_ADDR + 2u] = HI8(CY_FLASH_NUMBER_ROWS - 2u - CI_FLASH_ROWS_IN_ARRAY);
+                    buffer[CI_DATA_ADDR     ] = CY_FLASH_GET_MACRO_FROM_ROW(
+                        CY_FLASH_NUMBER_ROWS - 1u) ;
+                    buffer[CI_DATA_ADDR + 1u] = LO8(
+                        CY_FLASH_NUMBER_ROWS - 2u - CI_FLASH_ROWS_IN_ARRAY) ;
+                    buffer[CI_DATA_ADDR + 2u] = HI8(
+                        CY_FLASH_NUMBER_ROWS - 2u - CI_FLASH_ROWS_IN_ARRAY) ;
                 }
 
-                *count  = CI_COMMAND_PROGRAM_PACKET_SIZE;
-                rspSize = CI_COMMAND_PROGRAM_PACKET_DATA_SIZE;
-                rspCode = CYRET_SUCCESS;
-                rowIdx++;
-                appFirstRowNum++;
+                *count = CI_COMMAND_PROGRAM_PACKET_SIZE ;
+                rspSize = CI_COMMAND_PROGRAM_PACKET_DATA_SIZE ;
+                rspCode = CYRET_SUCCESS ;
+                rowIdx++ ;
+                appFirstRowNum++ ;
 
-                DBG_PRINT_TEXT("");
-                DBG_PRINT_TEXT("\t\tProgram Row:");
+                DBG_PRINT_TEXT("") ;
+                DBG_PRINT_TEXT("\t\tProgram Row:") ;
 
-                DBG_PRINTF("\t\t\t rowIdx: 0x%04X", rowIdx - 1u);
+                DBG_PRINTF("\t\t\t rowIdx: 0x%04X", rowIdx - 1u) ;
 
-                DBG_PRINTF("\t\t\t appFirstRowNum: 0x%04X", appFirstRowNum - 1u);
+                DBG_PRINTF("\t\t\t appFirstRowNum: 0x%04X", appFirstRowNum - 1u) ;
             }
-            else
-            {
+            else {
                 /* Schedule Bootloadable application */
 
                 /* Mark bootloadable application as loaded */
-                (void) EMI_ReadData(EMI_MD_BASE_ADDR, CY_FLASH_SIZEOF_ROW , metadata);
-                metadata[EMI_MD_APP_STATUS_ADDR] = EMI_MD_APP_STATUS_LOADED;
-                EMI_WriteData(NOR_FLASH_INSTRUCTION_SECTOR_ERASE, EMI_MD_BASE_ADDR, 0, NULL);
-                (void) EMI_WriteData(NOR_FLASH_INSTRUCTION_PP, EMI_MD_BASE_ADDR, CY_FLASH_SIZEOF_ROW , metadata);
+                (void) EMI_ReadData(EMI_MD_BASE_ADDR,
+                                    CY_FLASH_SIZEOF_ROW,
+                                    metadata) ;
+                metadata[EMI_MD_APP_STATUS_ADDR] = EMI_MD_APP_STATUS_LOADED ;
+                EMI_WriteData(NOR_FLASH_INSTRUCTION_SECTOR_ERASE,
+                              EMI_MD_BASE_ADDR,
+                              0,
+                              NULL) ;
+                (void) EMI_WriteData(NOR_FLASH_INSTRUCTION_PP,
+                                     EMI_MD_BASE_ADDR,
+                                     CY_FLASH_SIZEOF_ROW,
+                                     metadata) ;
 
                 /* Generate Exit Bootloader Command */
-                buffer[CI_CMD_ADDR] = CI_COMMAND_EXIT;
-                *count = CI_COMMAND_EXIT_PACKET_SIZE;
-                rspSize = CI_COMMAND_EXIT_PACKET_DATA_SIZE;
-                rspCode = CYRET_SUCCESS;
+                buffer[CI_CMD_ADDR] = CI_COMMAND_EXIT ;
+                *count = CI_COMMAND_EXIT_PACKET_SIZE ;
+                rspSize = CI_COMMAND_EXIT_PACKET_DATA_SIZE ;
+                rspCode = CYRET_SUCCESS ;
 
-                DBG_PRINT_TEXT("");
-                DBG_PRINT_TEXT("\t\tExit Bootloader:");
+                DBG_PRINT_TEXT("") ;
+                DBG_PRINT_TEXT("\t\tExit Bootloader:") ;
             }
-
         }
     }
 
-    CI_WritePacket(rspCode, buffer, rspSize);
+    CI_WritePacket(rspCode, buffer, rspSize) ;
 
-    return (CYRET_SUCCESS);
+    return (CYRET_SUCCESS) ;
 }
-
 
 /*******************************************************************************
 * Function Name: CyBtldrCommStart
@@ -284,17 +299,15 @@ cystatus CyBtldrCommRead(uint8* buffer, uint16 size, uint16* count, uint8 timeOu
 *******************************************************************************/
 void CyBtldrCommStart(void)
 {
-    numOfRxedRows = 0u;
-    communicationState = CI_COMMUNICATION_STATE_IDLE;
+    numOfRxedRows = 0u ;
+    communicationState = CI_COMMUNICATION_STATE_IDLE ;
 
-    EMI_Start();
+    EMI_Start() ;
 
-    DBG_PRINT_TEXT("");
-    DBG_PRINT_TEXT("\tCyBtldrCommStart():");
-    DBG_PRINT_TEXT("");
-
+    DBG_PRINT_TEXT("") ;
+    DBG_PRINT_TEXT("\tCyBtldrCommStart():") ;
+    DBG_PRINT_TEXT("") ;
 }
-
 
 /*******************************************************************************
 * Function Name: CyBtldrCommStop
@@ -312,11 +325,14 @@ void CyBtldrCommStart(void)
 *******************************************************************************/
 void CyBtldrCommStop(void)
 {
-    DBG_PRINT_TEXT("");
-    DBG_PRINT_TEXT("\tCyBtldrCommStop():");
-    DBG_PRINT_TEXT("");
-}
+    DBG_PRINT_TEXT("") ;
+    DBG_PRINT_TEXT("\tCyBtldrCommStop():") ;
+    DBG_PRINT_TEXT("") ;
 
+    DBG_PUTS("Cancello la flash") ;
+    EMI_EraseAll() ;
+    DBG_PUTS("Flash cancellata") ;
+}
 
 /*******************************************************************************
 * Function Name: CyBtldrCommReset
@@ -334,11 +350,10 @@ void CyBtldrCommStop(void)
 *******************************************************************************/
 void CyBtldrCommReset(void)
 {
-    DBG_PRINT_TEXT("");
-    DBG_PRINT_TEXT("\tCyBtldrCommReset():");
-    DBG_PRINT_TEXT("");
+    DBG_PRINT_TEXT("") ;
+    DBG_PRINT_TEXT("\tCyBtldrCommReset():") ;
+    DBG_PRINT_TEXT("") ;
 }
-
 
 /*******************************************************************************
 * Function Name: CyBtldrCommWrite
@@ -354,20 +369,22 @@ void CyBtldrCommReset(void)
 *  None
 *
 *******************************************************************************/
-cystatus CyBtldrCommWrite(uint8* buffer, uint16 size, uint16* count, uint8 timeOut)
+cystatus CyBtldrCommWrite(uint8 * buffer,
+                          uint16 size,
+                          uint16 * count,
+                          uint8 timeOut)
 {
-    buffer = buffer;
-    size = size;
-    count = count;
-    timeOut = timeOut;
+    buffer = buffer ;
+    size = size ;
+    count = count ;
+    timeOut = timeOut ;
 
-    DBG_PRINT_TEXT("");
-    DBG_PRINT_TEXT("\tCyBtldrCommWrite():");
-    DBG_PRINT_TEXT("");
+    DBG_PRINT_TEXT("") ;
+    DBG_PRINT_TEXT("\tCyBtldrCommWrite():") ;
+    DBG_PRINT_TEXT("") ;
 
-    return (CYRET_SUCCESS);
+    return (CYRET_SUCCESS) ;
 }
-
 
 /*******************************************************************************
 * Function Name: CI_CalcPacketChecksum
@@ -389,63 +406,54 @@ cystatus CyBtldrCommWrite(uint8* buffer, uint16 size, uint16* count, uint8 timeO
 *******************************************************************************/
 static uint16 CI_CalcPacketChecksum(const uint8 buffer[], uint16 size)
 {
-    #if(0u != CI_PACKET_CHECKSUM_CRC)
+#if (0u != CI_PACKET_CHECKSUM_CRC)
 
-        uint16 crc = CI_CRC_CCITT_INITIAL_VALUE;
-        uint16 tmp;
-        uint8  i;
-        uint16 tmpIndex = size;
+    uint16 crc = CI_CRC_CCITT_INITIAL_VALUE ;
+    uint16 tmp ;
+    uint8 i ;
+    uint16 tmpIndex = size ;
 
-        if(0u == size)
-        {
-            crc = ~crc;
-        }
-        else
-        {
-            do
-            {
-                tmp = buffer[tmpIndex - size];
+    if (0u == size) {
+        crc = ~crc ;
+    }
+    else {
+        do {
+            tmp = buffer[tmpIndex - size] ;
 
-                for (i = 0u; i < 8u; i++)
-                {
-                    if (0u != ((crc & 0x0001u) ^ (tmp & 0x0001u)))
-                    {
-                        crc = (crc >> 1u) ^ CI_CRC_CCITT_POLYNOMIAL;
-                    }
-                    else
-                    {
-                        crc >>= 1u;
-                    }
-
-                    tmp >>= 1u;
+            for (i = 0u ; i < 8u ; i++) {
+                if ( 0u != ( (crc & 0x0001u) ^ (tmp & 0x0001u) ) ) {
+                    crc = (crc >> 1u) ^ CI_CRC_CCITT_POLYNOMIAL ;
+                }
+                else {
+                    crc >>= 1u ;
                 }
 
-                size--;
+                tmp >>= 1u ;
             }
-            while(0u != size);
 
-            crc = ~crc;
-            tmp = crc;
-            crc = ( uint16 )(crc << 8u) | (tmp >> 8u);
-        }
+            size-- ;
+        } while (0u != size) ;
 
-        return(crc);
+        crc = ~crc ;
+        tmp = crc ;
+        crc = ( uint16 ) (crc << 8u) | (tmp >> 8u) ;
+    }
 
-    #else
+    return(crc) ;
 
-        uint16 sum = 0u;
+#else
 
-        while (size > 0u)
-        {
-            sum += buffer[size - 1u];
-            size--;
-        }
+    uint16 sum = 0u ;
 
-        return(( uint16 )1u + ( uint16 )(~sum));
+    while (size > 0u) {
+        sum += buffer[size - 1u] ;
+        size-- ;
+    }
 
-    #endif /* (0u != Bootloader_PACKET_CHECKSUM_CRC) */
+    return( ( uint16 ) 1u + ( uint16 ) (~sum) ) ;
+
+#endif     /* (0u != Bootloader_PACKET_CHECKSUM_CRC) */
 }
-
 
 /*******************************************************************************
 * Function Name: CI_WritePacket
@@ -469,85 +477,85 @@ static uint16 CI_CalcPacketChecksum(const uint8 buffer[], uint16 size)
 *******************************************************************************/
 static cystatus CI_WritePacket(uint8 status, uint8 buffer[], uint16 size)
 {
-    uint16 CYDATA checksum;
+    uint16 CYDATA checksum ;
 
     /* Start of packet. */
-    buffer[CI_SOP_ADDR]       = CI_SOP;
-    buffer[CI_SIZE_ADDR]      = LO8(size);
-    buffer[CI_SIZE_ADDR + 1u] = HI8(size);
+    buffer[CI_SOP_ADDR] = CI_SOP ;
+    buffer[CI_SIZE_ADDR] = LO8(size) ;
+    buffer[CI_SIZE_ADDR + 1u] = HI8(size) ;
 
     /* Compute checksum. */
-    checksum = CI_CalcPacketChecksum(buffer, size + CI_DATA_ADDR);
+    checksum = CI_CalcPacketChecksum(buffer, size + CI_DATA_ADDR) ;
 
-    buffer[CI_CHK_ADDR(size)]      = LO8(checksum);
-    buffer[CI_CHK_ADDR(1u + size)] = HI8(checksum);
-    buffer[CI_EOP_ADDR(size)]      = CI_EOP;
+    buffer[CI_CHK_ADDR(size)] = LO8(checksum) ;
+    buffer[CI_CHK_ADDR(1u + size)] = HI8(checksum) ;
+    buffer[CI_EOP_ADDR(size)] = CI_EOP ;
 
-    DBG_PRINT_TEXT("");
-    DBG_PRINT_TEXT("CustomInterface:");
-    DBG_PRINT_TEXT("\tCI_WritePacket():");
+    DBG_PRINT_TEXT("") ;
+    DBG_PRINT_TEXT("CustomInterface:") ;
+    DBG_PRINT_TEXT("\tCI_WritePacket():") ;
 
-    DBG_PRINTF("\t\t SOP:       0x%02X", buffer[CI_SOP_ADDR]);
+    DBG_PRINTF("\t\t SOP:       0x%02X", buffer[CI_SOP_ADDR]) ;
 
-    DBG_PRINTF("\t\t CMD:       0x%02X", buffer[CI_CMD_ADDR]);
+    DBG_PRINTF("\t\t CMD:       0x%02X", buffer[CI_CMD_ADDR]) ;
 
-    DBG_PRINTF("\t\t SIZE:      0x%04X", size);
+    DBG_PRINTF("\t\t SIZE:      0x%04X", size) ;
 
-    if (buffer[CI_CMD_ADDR] == 0x39)
-    {
-        DBG_PRINTF("\t\t Flash Array: 0x%02X", buffer[CI_DATA_ADDR ]);
+    if (buffer[CI_CMD_ADDR] == 0x39) {
+        DBG_PRINTF("\t\t Flash Array: 0x%02X", buffer[CI_DATA_ADDR ]) ;
 
-        DBG_PRINTF("\t\t Flash Row: 0x%04X", buffer[CI_DATA_ADDR + 2] << 8 | buffer[CI_DATA_ADDR + 1]);
+        DBG_PRINTF("\t\t Flash Row: 0x%04X",
+                   buffer[CI_DATA_ADDR + 2] << 8 | buffer[CI_DATA_ADDR + 1]) ;
     }
 
-    DBG_PRINTF("\t\t Checksum:  0x%04X", checksum);
+    DBG_PRINTF("\t\t Checksum:  0x%04X", checksum) ;
 
-    DBG_PRINTF("\t\t EOP:       0x%02X", buffer[CI_EOP_ADDR(size)]);
+    DBG_PRINTF("\t\t EOP:       0x%02X", buffer[CI_EOP_ADDR(size)]) ;
 
 //    DBG_PRINT_TEXT("\t\t Packet:    ");
 //    DBG_PRINT_ARRAY(buffer, CI_EOP_ADDR(size) + 1u);
 //    DBG_PRINT_TEXT("");
 
-    return (CYRET_SUCCESS);
+    return (CYRET_SUCCESS) ;
 }
-
 
 static uint16 CI_CalcExtMemAppChecksum(void)
 {
-    uint8  extMemRow[CY_FLASH_SIZEOF_ROW];
-    uint16 extMemRowIdx;
-    uint16 extMemAppRowsTotal;
-    uint16 appExtMemChecksum = 0u;
-    uint16 size;
+    uint8 extMemRow[CY_FLASH_SIZEOF_ROW] ;
+    uint16 extMemRowIdx ;
+    uint16 extMemAppRowsTotal ;
+    uint16 appExtMemChecksum = 0u ;
+    uint16 size ;
 
     /* Get total number of the written flash rows to the external memory */
-    (void) EMI_ReadData(EMI_MD_BASE_ADDR, CY_FLASH_SIZEOF_ROW , metadata);
-    extMemAppRowsTotal = ((uint16)((uint16)metadata[EMI_MD_APP_SIZE_IN_ROWS_ADDR + 1u] << 8u)) |
-                                      metadata[EMI_MD_APP_SIZE_IN_ROWS_ADDR];
+    (void) EMI_ReadData(EMI_MD_BASE_ADDR, CY_FLASH_SIZEOF_ROW, metadata) ;
+    extMemAppRowsTotal =
+        ( (uint16) ( (uint16) metadata[EMI_MD_APP_SIZE_IN_ROWS_ADDR +
+                                       1u] << 8u ) ) |
+        metadata[EMI_MD_APP_SIZE_IN_ROWS_ADDR] ;
 
-    for (extMemRowIdx = 0u; extMemRowIdx < extMemAppRowsTotal; extMemRowIdx++)
-    {
-        (void) EMI_ReadData(EMI_APP_ABS_ADDR(extMemRowIdx), CY_FLASH_SIZEOF_ROW, extMemRow);
+    for (extMemRowIdx = 0u ; extMemRowIdx < extMemAppRowsTotal ;
+         extMemRowIdx++) {
+        (void) EMI_ReadData(EMI_APP_ABS_ADDR(
+                                extMemRowIdx), CY_FLASH_SIZEOF_ROW, extMemRow) ;
 
-        size = CY_FLASH_SIZEOF_ROW;
-        while (size > 0u)
-        {
-            size--;
-            appExtMemChecksum += extMemRow[size];
+        size = CY_FLASH_SIZEOF_ROW ;
+        while (size > 0u) {
+            size-- ;
+            appExtMemChecksum += extMemRow[size] ;
         }
     }
 
-    appExtMemChecksum = ( uint16 )1u + ( uint16 )(~appExtMemChecksum);
+    appExtMemChecksum = ( uint16 ) 1u + ( uint16 ) (~appExtMemChecksum) ;
 
-    DBG_PRINT_TEXT("");
-    DBG_PRINT_TEXT("CustomInterface:");
-    DBG_PRINT_TEXT("\tCI_CalcExtMemAppChecksum():");
-    DBG_PRINT_TEXT("");
+    DBG_PRINT_TEXT("") ;
+    DBG_PRINT_TEXT("CustomInterface:") ;
+    DBG_PRINT_TEXT("\tCI_CalcExtMemAppChecksum():") ;
+    DBG_PRINT_TEXT("") ;
 
-    DBG_PRINTF("\t\t Calculated checksum: 0x%04X", appExtMemChecksum);
+    DBG_PRINTF("\t\t Calculated checksum: 0x%04X", appExtMemChecksum) ;
 
-    return(appExtMemChecksum);
+    return(appExtMemChecksum) ;
 }
-
 
 /* [] END OF FILE */

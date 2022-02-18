@@ -4,7 +4,7 @@
 #include "ExternalMemoryInterface.h"
 
 extern void BootloaderEmulator_iniz(void) ;
-extern void BootloaderEmulator_HostLink(const uint8) ;
+extern void BootloaderEmulator_HostLink(uint8) ;
 
 static bool abil = false ;
 
