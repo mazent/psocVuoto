@@ -17,7 +17,7 @@
 //#define CMD_WRDI		0x04
 #define CMD_PP          0x02
 #define CMD_RDSR1       0x05
-//#define CMD_RDSR2         0x07
+#define CMD_RDSR2       0x35
 #define CMD_SE          0x20
 //#define CMD_HBE       0x52
 #define CMD_BE          0xD8
@@ -84,7 +84,10 @@ void AT25_Read_Identification(AT25_READ_ID * pRI)
     memcpy(&pRI->device, rsp + 1, 2) ;
 }
 
-void AT25_Read(uint32_t addr, void * v, size_t dim)
+void AT25_Read(
+    uint32_t addr,
+    void * v,
+    size_t dim)
 {
     uint8_t cmd[1 + 3] = {
         CMD_READ
@@ -108,14 +111,16 @@ static bool is_erased(uint8_t x)
 {
     bool esito = VAL_ERASED == x ;
 
-    if (esito) {
+    if ( esito ) {
         dim_erased += 1 ;
     }
 
     return esito ;
 }
 
-bool AT25_is_erased(uint32_t addr, size_t dim)
+bool AT25_is_erased(
+    uint32_t addr,
+    size_t dim)
 {
     uint8_t cmd[1 + 3] = {
         CMD_READ
@@ -147,7 +152,9 @@ void AT25_Write_Enable(void)
     SPI_CS_N_Write(1) ;
 }
 
-static size_t max_dim(uint32_t addr, size_t dim)
+static size_t max_dim(
+    uint32_t addr,
+    size_t dim)
 {
     // Devo rimanere all'interno della pagina
     uint32_t addr_max = addr + AT25SF041_WRITE_PAGE_BUFFER_SIZE ;
@@ -161,7 +168,10 @@ static size_t max_dim(uint32_t addr, size_t dim)
     return dim ;
 }
 
-size_t AT25_Write(uint32_t addr, const void * v, size_t dim)
+size_t AT25_Write(
+    uint32_t addr,
+    const void * v,
+    size_t dim)
 {
     uint8_t cmd[1 + 3] = {
         CMD_PP
@@ -185,10 +195,8 @@ size_t AT25_Write(uint32_t addr, const void * v, size_t dim)
     return DIM ;
 }
 
-uint8_t AT25_Read_Status_Register_1(void)
+static uint8_t AT25_Read_Status_Register_x(uint8_t cmd)
 {
-    uint8_t cmd = CMD_RDSR1 ;
-
     SPI_CS_N_Write(0) ;
 
     FSPI_write( &cmd, sizeof(cmd) ) ;
@@ -198,6 +206,16 @@ uint8_t AT25_Read_Status_Register_1(void)
     SPI_CS_N_Write(1) ;
 
     return cmd ;
+}
+
+uint8_t AT25_Read_Status_Register_1(void)
+{
+    return AT25_Read_Status_Register_x(CMD_RDSR1) ;
+}
+
+uint8_t AT25_Read_Status_Register_2(void)
+{
+    return AT25_Read_Status_Register_x(CMD_RDSR2) ;
 }
 
 void AT25_Sector_Erase(uint32_t addr)
@@ -244,12 +262,5 @@ void AT25_Block_Erase(uint32_t addr)
 //
 //	SPI_CS_N_Write(1) ;
 //}
-
-#else
-
-void AT25_Read_Identification(AT25_READ_ID * p)
-{
-    memset( p, 0, sizeof(AT25_READ_ID) ) ;
-}
 
 #endif

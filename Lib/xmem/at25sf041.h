@@ -79,13 +79,15 @@ void AT25_Chip_Erase(void) ;
 
 uint8_t AT25_Read_Status_Register_1(void) ;
 
-//#define SR2_E_ERR     (1 << 6)
-//#define SR2_P_ERR     (1 << 5)
-//#define SR2_ES        (1 << 1)
-//#define SR2_PS        (1 << 0)
-//
-//uint8_t AT25_Read_Status_Register_2(void) ;
-//
+#define SR2_CMP     (1 << 6)
+#define SR2_LB3     (1 << 5)
+#define SR2_LB2     (1 << 4)
+#define SR2_LB1     (1 << 3)
+#define SR2_QE      (1 << 1)
+#define SR2_SRP1    (1 << 0)
+
+uint8_t AT25_Read_Status_Register_2(void) ;
+
 //#define CR1_SUS_D	  (1 << 7)
 //#define CR1_CMP       (1 << 6)
 //#define CR1_LB3       (1 << 5)

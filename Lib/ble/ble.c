@@ -733,21 +733,22 @@ static void bt_evn(uint32 event, void * eventParam)
             CYBLE_GATT_MTU ;
         DBG_PRINTF("CYBLE_EVT_GATTS_XCNHG_MTU_REQ %d", mtu) ;
         break ;
-#if (CYBLE_LL_MAX_TX_PAYLOAD_SIZE > CYBLE_LL_MIN_SUPPORTED_TX_PAYLOAD_SIZE) || \
-        (CYBLE_LL_MAX_RX_PAYLOAD_SIZE > CYBLE_LL_MIN_SUPPORTED_RX_PAYLOAD_SIZE)
-    // LE Data Packet Length Extension
-    case CYBLE_EVT_GAP_DATA_LENGTH_CHANGE: {
-            CYBLE_GAP_CONN_DATA_LENGTH_T * prm =
-                (CYBLE_GAP_CONN_DATA_LENGTH_T *) eventParam ;
-
-            DBG_PUTS("CYBLE_EVT_GAP_DATA_LENGTH_CHANGE") ;
-            DBG_PRINTF("\t connMaxTxOctets 0x%04X", prm->connMaxTxOctets) ;
-            DBG_PRINTF("\t connMaxTxTime   0x%04X", prm->connMaxTxTime) ;
-            DBG_PRINTF("\t connMaxRxOctets 0x%04X", prm->connMaxRxOctets) ;
-            DBG_PRINTF("\t connMaxRxTime   0x%04X", prm->connMaxRxTime) ;
-        }
-        break ;
-#endif
+//#if (CYBLE_LL_MAX_TX_PAYLOAD_SIZE > CYBLE_LL_MIN_SUPPORTED_TX_PAYLOAD_SIZE) ||
+//        (CYBLE_LL_MAX_RX_PAYLOAD_SIZE >
+// CYBLE_LL_MIN_SUPPORTED_RX_PAYLOAD_SIZE)
+//    // LE Data Packet Length Extension
+//    case CYBLE_EVT_GAP_DATA_LENGTH_CHANGE: {
+//            CYBLE_GAP_CONN_DATA_LENGTH_T * prm =
+//                (CYBLE_GAP_CONN_DATA_LENGTH_T *) eventParam ;
+//
+//            DBG_PUTS("CYBLE_EVT_GAP_DATA_LENGTH_CHANGE") ;
+//            DBG_PRINTF("\t connMaxTxOctets 0x%04X", prm->connMaxTxOctets) ;
+//            DBG_PRINTF("\t connMaxTxTime   0x%04X", prm->connMaxTxTime) ;
+//            DBG_PRINTF("\t connMaxRxOctets 0x%04X", prm->connMaxRxOctets) ;
+//            DBG_PRINTF("\t connMaxRxTime   0x%04X", prm->connMaxRxTime) ;
+//        }
+//        break ;
+//#endif
 #ifdef USA_BONDING
     case CYBLE_EVT_PENDING_FLASH_WRITE:
         /* Inform application that flash write is pending. Stack internal data
@@ -1148,12 +1149,15 @@ bool BLE_servizi(const BLE_SRV * vSrv, size_t dim)
         }
     }
 
-    if (i == dim) {
+    if (i) {
+    	// Qualcosa e' cambiato
         CYBLE_GATT_HANDLE_VALUE_PAIR_T handleValuePair ;
 #if 0
         uint32 value ;
 
-        /* Force client to rediscover services in range of bootloader service */
+        /* Force client to rediscover services in range of bootloader service
+         * p.e.: 1C:00:19:00
+        */
         value =
             ( (uint32) ( ( (uint32) cyBle_btss.btServiceHandle ) << 16u ) ) |
             ( (uint32) (cyBle_btss.btServiceInfo[0u].
@@ -1169,7 +1173,9 @@ bool BLE_servizi(const BLE_SRV * vSrv, size_t dim)
             CYBLE_GATT_DB_ATTR_HANDLE_T maxh ;
         } val ;
 
-        /* Force client to rediscover services dal minimo in su */
+        /* Force client to rediscover services dal minimo in su
+         * p.e.: 19:00:FF:FF
+        */
         val.minh = hmin ;
         val.maxh = 0xFFFF ;
 
