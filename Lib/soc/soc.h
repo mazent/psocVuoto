@@ -11,7 +11,8 @@
  * con una chiamata a WDOG_reset
  */
 
-#include "utili/includimi.h"
+#include <stdbool.h>
+#include <stddef.h>
 
 #include "soc_cfg.h"
 
@@ -80,6 +81,13 @@ static inline void SOC_apc(
 }
 
 bool SOC_apc_attiva(int) ;
+
+// Power management
+typedef enum {
+	CPU_ATTIVA = 0,
+	CPU_PAUSA,
+	CPU_FERMA
+} RICH_CPU ;
 
 // Power management della cpu
 void SOC_min(RICH_CPU) ;

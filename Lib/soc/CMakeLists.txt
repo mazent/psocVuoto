@@ -4,5 +4,4 @@ set(CODICE
 	wdog.c
 )
 
-
 add_library(soc OBJECT ${CODICE})

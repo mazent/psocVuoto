@@ -1,7 +1,10 @@
 #ifndef BLE_H_
 #define BLE_H_
 
-#include "utili/includimi.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
+
 #include "ble_cfg.h"
 
 #define DIM_MAC     6
@@ -17,6 +20,9 @@ typedef struct {
 
 #define BLE_ABIL_NOTIF      (1 << 0)
 #define BLE_ABIL_INDIC      (1 << 1)
+
+// Cambia nome "al volo" (definire BLE_MAX_NDD)
+bool BLE_nome(const char * nome) ;
 
 // Invocare prima della BLE_start (opzionale)
 // Passare il vettore che associa alla caratteristica (CYBLE_XXX_CHAR_HANDLE)
@@ -194,9 +200,5 @@ bool BLE_obs_stop(void) ;
 // Power management
 void BLE_enter_deep(void) ;
 void BLE_leave_deep(void) ;
-bool BLE_clock(void) ;
-// Invocare periodicamente
-void BLE_run(void) ;
-RICH_CPU BLE_cpu(void) ;
 
 #endif

@@ -1,10 +1,10 @@
 //#define STAMPA_DBG
-#include "soc.h"
+#include "utili.h"
 #include "timer.h"
 #include "crit_sec.h"
 
 // Evita di svegliare inutilmente da sleep
-#define DISAB_TICK			1
+#define DISAB_TICK          1
 
 /*
  * Il valore di un timer e' composto da:
@@ -89,8 +89,8 @@ bool timer_attivi(void)
 
     ENTER_CRITICAL_SECTION ;
 
-    for (int t = 0 ; t < MAX_TIMER_SW ; t++) {
-        if (lista_timer[t].val != TS_SERVITO) {
+    for ( int t = 0 ; t < MAX_TIMER_SW ; t++ ) {
+        if ( lista_timer[t].val != TS_SERVITO ) {
             attivi = true ;
             break ;
         }
@@ -101,11 +101,13 @@ bool timer_attivi(void)
     return attivi ;
 }
 
-void timer_setcb(int quale, PF_TIMER_SW cb)
+void timer_setcb(
+    int quale,
+    PF_TIMER_SW cb)
 {
     ASSERT(quale < MAX_TIMER_SW) ;
 
-    if (quale < MAX_TIMER_SW) {
+    if ( quale < MAX_TIMER_SW ) {
         ENTER_CRITICAL_SECTION ;
 
         lista_timer[quale].cb = cb ;
@@ -114,33 +116,35 @@ void timer_setcb(int quale, PF_TIMER_SW cb)
     }
 }
 
-void timer_start(int quale, uint32_t ms)
+void timer_start(
+    int quale,
+    uint32_t ms)
 {
     timer_start_arg(quale, ms, NULL) ;
 }
 
-void timer_start_arg(int quale, uint32_t ms, void * v)
+void timer_start_arg(
+    int quale,
+    uint32_t ms,
+    void * v)
 {
     ASSERT(quale < MAX_TIMER_SW) ;
-    ASSERT(ms) ;
 
-    if (quale >= MAX_TIMER_SW) {
+    if ( quale >= MAX_TIMER_SW ) {
         DBG_ERR ;
     }
     else {
-        if (0 == ms) {
-            DBG_ERR ;
-            ms = 1 ;
-        }
-
 #ifdef MILLI_PER_TICK
         // Arrotondo
         uint32_t ttick = (ms + MILLI_PER_TICK - 1) / MILLI_PER_TICK ;
 #else
         uint32_t ttick = ms ;
 #endif
-        if (ttick > TS_SCADUTO) {
+        if ( ttick > TS_SCADUTO ) {
             ttick = TS_SCADUTO ;
+        }
+        else if ( 0 == ttick ) {
+            ttick = 1 ;
         }
 
         ENTER_CRITICAL_SECTION ;
@@ -148,7 +152,7 @@ void timer_start_arg(int quale, uint32_t ms, void * v)
         lista_timer[quale].arg = v ;
         lista_timer[quale].val = TS_SCADUTO - ttick ;
 #ifdef DISAB_TICK
-        if (!tick_attivo) {
+        if ( !tick_attivo ) {
             abil_tick() ;
         }
 #endif
@@ -160,7 +164,7 @@ void timer_stop(int quale)
 {
     ASSERT(quale < MAX_TIMER_SW) ;
 
-    if (quale < MAX_TIMER_SW) {
+    if ( quale < MAX_TIMER_SW ) {
         ENTER_CRITICAL_SECTION ;
 
         lista_timer[quale].val = TS_SERVITO ;
@@ -175,7 +179,7 @@ bool timer_running(int quale)
 
     ASSERT(quale < MAX_TIMER_SW) ;
 
-    if (quale < MAX_TIMER_SW) {
+    if ( quale < MAX_TIMER_SW ) {
         ENTER_CRITICAL_SECTION ;
 
         esito = lista_timer[quale].val != TS_SERVITO ;
@@ -190,7 +194,7 @@ bool timer_running(int quale)
 
 void timer_ini(void)
 {
-    for (int t = 0 ; t < MAX_TIMER_SW ; t++) {
+    for ( int t = 0 ; t < MAX_TIMER_SW ; t++ ) {
         lista_timer[t].val = TS_SERVITO ;
         lista_timer[t].cb = NULL ;
     }
@@ -202,7 +206,7 @@ void timer_ini(void)
 
 void timer_run(void)
 {
-    if (tick) {
+    if ( tick ) {
         // E' scattata l'interruzione
         PF_TIMER_SW funzioni[MAX_TIMER_SW] = {
             NULL
@@ -216,14 +220,14 @@ void timer_run(void)
         // Aggiorno
         ENTER_CRITICAL_SECTION ;
 
-        for (int t = 0 ; t < MAX_TIMER_SW ; t++) {
-            if (lista_timer[t].val != TS_SERVITO) {
+        for ( int t = 0 ; t < MAX_TIMER_SW ; t++ ) {
+            if ( lista_timer[t].val != TS_SERVITO ) {
                 lista_timer[t].val++ ;
 
-                if (TS_SCADUTO == lista_timer[t].val) {
+                if ( TS_SCADUTO == lista_timer[t].val ) {
                     lista_timer[t].val = TS_SERVITO ;
 
-                    if (lista_timer[t].cb) {
+                    if ( lista_timer[t].cb ) {
                         funzioni[t] = lista_timer[t].cb ;
                         argomenti[t] = lista_timer[t].arg ;
                     }
@@ -234,8 +238,8 @@ void timer_run(void)
         LEAVE_CRITICAL_SECTION ;
 
         // Eseguo
-        for (int t = 0 ; t < MAX_TIMER_SW ; t++) {
-            if (funzioni[t]) {
+        for ( int t = 0 ; t < MAX_TIMER_SW ; t++ ) {
+            if ( funzioni[t] ) {
                 DBG_PRINTF("eseguo timer %d\n", t) ;
                 funzioni[t](argomenti[t]) ;
             }

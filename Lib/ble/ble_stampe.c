@@ -1,5 +1,5 @@
 #define STAMPA_DBG
-#include "ble.h"
+#include "soc/utili.h"
 
 #ifdef CY_BLE_CYBLE_H
 
@@ -96,7 +96,7 @@ void stampa_au(const char * titolo, const void * v)
 
 #endif
 
-#if 0
+#if 1
 void stampa_CYBLE_STATE_T(CYBLE_STATE_T s)
 {
     switch (s) {

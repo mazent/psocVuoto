@@ -1,4 +1,6 @@
 //#define STAMPA_DBG
+#include "utili.h"
+
 #include "wdog.h"
 
 #if defined(CY_ISR_isr_wdog_H)
@@ -155,6 +157,7 @@ static volatile bool tick ;
 typedef struct {
     uint32_t val ;
     PF_WDTIMER_SW cb ;
+    void * arg ;
 } UN_TIMER ;
 
 static UN_TIMER lista_timer[MAX_WDTIMER_SW] ;
@@ -180,6 +183,14 @@ void WDOG_start(
     int quale,
     uint32_t secondi)
 {
+    WDOG_start_arg(quale, secondi, NULL) ;
+}
+
+void WDOG_start_arg(
+    int quale,
+    uint32_t secondi,
+    void * v)
+{
     ASSERT(quale < MAX_WDTIMER_SW) ;
     ASSERT(secondi) ;
     DYN_ASSERT( 0 == __get_IPSR() ) ;
@@ -199,6 +210,7 @@ void WDOG_start(
             ticks = TS_SCADUTO ;
         }
 
+        lista_timer[quale].arg = v ;
         lista_timer[quale].val = TS_SCADUTO - ticks ;
 
         abil_lento() ;
@@ -263,6 +275,9 @@ static void calcia(void)
 
 #if defined(WDOG_SW_ABIL) || (MAX_WDTIMER_SW > 0)
 
+__attribute__( (weak) )
+void WDOG_wds_cb(void){}
+
 static void timer_lento_isr(void)
 {
 #if MAX_WDTIMER_SW > 0
@@ -278,8 +293,11 @@ static void timer_lento_isr(void)
     else {
         wds_run = false ;
 
-        // Questa dovrebbe resettare
-        WDOG_SW_FUN() ;
+        // Avviso ...
+        WDOG_wds_cb() ;
+
+        // ... e resetto
+        WDOG_reset() ;
     }
 #endif
 }
@@ -369,7 +387,7 @@ void WDOG_calcia(void)
 
                 if ( lista_timer[t].cb ) {
                     //DBG_PRINTF("eseguo wdtimer %d\n", t) ;
-                    lista_timer[t].cb() ;
+                    lista_timer[t].cb(lista_timer[t].arg) ;
                 }
             }
         }
@@ -399,7 +417,7 @@ void WDOG_reset(void)
     CySysWdtEnable(CY_SYS_WDT_COUNTER0_MASK | CY_SYS_WDT_COUNTER1_MASK) ;
 #else
     DBG_PUTS(__func__) ;
-    BPOINT;
+    BPOINT ;
 #endif
     while ( true ) {}
 }

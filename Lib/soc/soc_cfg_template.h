@@ -1,23 +1,11 @@
 #ifndef SOC_CFG_H_
 #define SOC_CFG_H_
 
-// Non so come e' fatto l'hw
-// Prima funzione invocata: NON c'e' ancora soc!
-extern void HW_iniz(void) ;
-// Ingresso in deep-sleep
-extern void HW_sleep(void) ;
-// Uscita da deep-sleep
-extern void HW_wake(void) ;
-
-// Invocata poco prima del ciclo infinito del main
-extern void app_ini(void) ;
-
-// Serve la collaborazione del BT
-void BLE_run(void) ;
-RICH_CPU BLE_cpu(void) ;
-
 // Se definita controlla lo stack stampando lo spazio libero minimo
 #define SOC_CTRL_STACK      1
+
+// Debug malloc/free con diario.py
+#define SOC_DBG_MALLOC		1
 
 // Come mi spengo (si riparte da reset, ram valida solo in hib)
 #define SOC_SPEGNI_STOP     1	// CySysPmStop (risveglio da 2[2])
@@ -33,9 +21,7 @@ RICH_CPU BLE_cpu(void) ;
 
 // se definito e una apc e' gia' in corso,
 // se ne cerca una libera fra quelle in piu'
-//#define MAX_NUM_APC     0
+//#define MAX_NUM_APC     (MAX_SOC_APC + 3)
 
-// Debug malloc/free con diario.py
-#define SOC_DBG_MALLOC		1
 
 #endif

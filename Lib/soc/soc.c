@@ -1,5 +1,16 @@
 //#define STAMPA_DBG
+#include "utili.h"
 #include "soc.h"
+
+extern void HW_iniz(void) ;
+extern void HW_sleep(void) ;
+extern void HW_wake(void) ;
+
+extern void app_ini(void) ;
+
+extern void BLE_run(void) ;
+extern RICH_CPU BLE_cpu(void) ;
+
 
 #ifndef SOC_SPEGNI
 #   define SOC_SPEGNI   0
@@ -403,7 +414,7 @@ int main(void)
     CyGlobalIntEnable ;
 
     // Prima debug e s.o.
-    DBG_INIZ ;
+    DDB_INIZ ;
 
     wdog_iniz() ;
     soc_ini() ;
@@ -469,7 +480,7 @@ int main(void)
         case CPU_FERMA:
             HW_sleep() ;
 
-            DBG_ENTER_DEEP ;
+            DDB_ENTER_DEEP ;
 
             // Dormo
 #ifdef CY_PINS_DBG_BLU_H
@@ -483,7 +494,7 @@ int main(void)
 #endif
 
             // Riabilito
-            DBG_LEAVE_DEEP ;
+            DDB_LEAVE_DEEP ;
 
             HW_wake() ;
 
