@@ -17,6 +17,7 @@ void WDOG_calcia(void) ;
 void WDOG_reset(void) ;
 
 // Watchdog software (definire WDOG_SW_ABIL)
+// Non da interruzione!
 // --------------------------
 
 // 0 ferma il wds

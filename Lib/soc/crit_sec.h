@@ -8,7 +8,7 @@
 
 #define ENTER_CRITICAL_SECTION                       \
     uint32_t ipsr = __get_IPSR() ;                   \
-    uint8_t interruptStatus ;                        \
+    uint8_t interruptStatus = 0 ;                    \
     if (0 == ipsr) {                                 \
         interruptStatus = CyEnterCriticalSection() ; \
     }

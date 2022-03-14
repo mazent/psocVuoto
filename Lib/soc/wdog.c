@@ -172,7 +172,7 @@ void WDOG_setcb(
     PF_WDTIMER_SW cb)
 {
     ASSERT(quale < MAX_WDTIMER_SW) ;
-    DYN_ASSERT( 0 == __get_IPSR() ) ;
+    ASSERT_BPOINT( 0 == __get_IPSR() ) ;
 
     if ( quale < MAX_WDTIMER_SW ) {
         lista_timer[quale].cb = cb ;
@@ -193,21 +193,19 @@ void WDOG_start_arg(
 {
     ASSERT(quale < MAX_WDTIMER_SW) ;
     ASSERT(secondi) ;
-    DYN_ASSERT( 0 == __get_IPSR() ) ;
+    ASSERT_BPOINT( 0 == __get_IPSR() ) ;
 
     if ( quale >= MAX_WDTIMER_SW ) {
         DBG_ERR ;
     }
     else {
-        if ( 0 == secondi ) {
-            DBG_ERR ;
-            secondi = 1 ;
-        }
-
         uint32_t ticks = (secondi + PERIODO_S - 1) / PERIODO_S ;
 
         if ( ticks > TS_SCADUTO ) {
             ticks = TS_SCADUTO ;
+        }
+        else if ( 0 == ticks ) {
+            ticks = 1 ;
         }
 
         lista_timer[quale].arg = v ;
@@ -237,7 +235,7 @@ static void wdt_spegni(void)
 
 void WDOG_stop(int quale)
 {
-    DYN_ASSERT( 0 == __get_IPSR() ) ;
+    ASSERT_BPOINT( 0 == __get_IPSR() ) ;
     ASSERT(quale < MAX_WDTIMER_SW) ;
 
     if ( quale < MAX_WDTIMER_SW ) {
@@ -252,7 +250,7 @@ bool WDOG_running(int quale)
     bool esito = false ;
 
     ASSERT(quale < MAX_WDTIMER_SW) ;
-    DYN_ASSERT( 0 == __get_IPSR() ) ;
+    ASSERT_BPOINT( 0 == __get_IPSR() ) ;
 
     if ( quale < MAX_WDTIMER_SW ) {
         esito = lista_timer[quale].val != TS_SERVITO ;

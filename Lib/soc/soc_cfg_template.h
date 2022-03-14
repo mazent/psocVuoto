@@ -1,6 +1,9 @@
 #ifndef SOC_CFG_H_
 #define SOC_CFG_H_
 
+// Se definita, il BL non condivide la causa del reset
+#define SOC_CAUSA_NC		1
+
 // Se definita controlla lo stack stampando lo spazio libero minimo
 #define SOC_CTRL_STACK      1
 
@@ -16,8 +19,11 @@
 // Se non definita SOC_spegni e' vuota
 #define SOC_SPEGNI          SOC_SPEGNI_STOP
 
-// lista delle apc
+// Lista delle apc
 #define MAX_SOC_APC     0
+
+// Lista delle isr
+#define MAX_SOC_ISR     0
 
 // se definito e una apc e' gia' in corso,
 // se ne cerca una libera fra quelle in piu'

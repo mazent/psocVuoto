@@ -214,6 +214,7 @@ void timer_run(void)
         void * argomenti[MAX_TIMER_SW] = {
             NULL
         } ;
+        int ultimo = -1 ;
 
         tick = false ;
 
@@ -228,6 +229,7 @@ void timer_run(void)
                     lista_timer[t].val = TS_SERVITO ;
 
                     if ( lista_timer[t].cb ) {
+                        ultimo = t ;
                         funzioni[t] = lista_timer[t].cb ;
                         argomenti[t] = lista_timer[t].arg ;
                     }
@@ -238,13 +240,12 @@ void timer_run(void)
         LEAVE_CRITICAL_SECTION ;
 
         // Eseguo
-        for ( int t = 0 ; t < MAX_TIMER_SW ; t++ ) {
+        for ( int t = 0 ; t <= ultimo ; t++ ) {
             if ( funzioni[t] ) {
                 DBG_PRINTF("eseguo timer %d\n", t) ;
                 funzioni[t](argomenti[t]) ;
             }
         }
-
 #ifdef DISAB_TICK
         // E adesso?
         if ( !timer_attivi() ) {

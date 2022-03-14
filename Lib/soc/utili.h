@@ -21,6 +21,22 @@
 #define CONV_DEN    8
 #define ADV_INT_MS      ( (CYBLE_FAST_ADV_INT_MIN * CONV_NUM) / CONV_DEN )
 
+// Vedi anche CyGetUniqueId
+#define SILICON_ID    (*(reg32 *) CYREG_SFLASH_SILICON_ID)
+
+// Usare una copia di cm0gcc.ld inserendo questa area fra heap e stack
+// (come la .noinit, per cui non si puo' inizializzare)
+// Le dimensioni di stack e heap si possono modificare
+// solo dentro cm0gcc.ld
+// Esempio d'uso
+//     #ifdef CY_BOOTLOADABLE_Bootloadable_H
+//     static NOMANSLAND tipo variabile ;
+//     #else
+//     static CY_NOINIT tipo variabile ;
+//     #endif
+
+#define NOMANSLAND		CY_SECTION(".nml")
+
 // Varie
 #define UNUSED(x)       (void) ( sizeof(x) )
 #define NOT(x)          ( ~(unsigned int) (x) )
@@ -95,7 +111,7 @@ static inline uint32_t UINTEGER(const void * v)
 #ifdef NDEBUG
 // In release non ci devono essere
 #   define BPOINT
-#   define DYN_ASSERT(x)
+#   define ASSERT_BPOINT(x)
 #else
 #   define BPOINT        \
     do {                 \
@@ -104,7 +120,8 @@ static inline uint32_t UINTEGER(const void * v)
         __NOP() ;        \
     }                    \
     while ( false ) ;
-#   define DYN_ASSERT(x)  \
+
+#   define ASSERT_BPOINT(x)  \
     do {                  \
         if ( !(x) ) {     \
             DBG_ASSERT ;  \
@@ -113,6 +130,7 @@ static inline uint32_t UINTEGER(const void * v)
     } while ( false )
 #endif
 
+// In debug queste stampano (se stampa abilitata)
 #define ASSERT(x)         \
     do {                  \
         if ( !(x) ) {     \

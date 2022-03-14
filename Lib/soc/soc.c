@@ -1,6 +1,7 @@
 //#define STAMPA_DBG
 #include "utili.h"
 #include "soc.h"
+#include "crit_sec.h"
 
 extern void HW_iniz(void) ;
 extern void HW_sleep(void) ;
@@ -10,7 +11,6 @@ extern void app_ini(void) ;
 
 extern void BLE_run(void) ;
 extern RICH_CPU BLE_cpu(void) ;
-
 
 #ifndef SOC_SPEGNI
 #   define SOC_SPEGNI   0
@@ -43,11 +43,26 @@ typedef struct {
 } UNA_APC ;
 
 #ifdef MAX_NUM_APC
-#   define MAX_BUFF        MAX_NUM_APC
+#   define MAX_APC        MAX_NUM_APC
 #else
-#   define MAX_BUFF        MAX_SOC_APC
+#   define MAX_APC        MAX_SOC_APC
 #endif
-static UNA_APC vAPC[MAX_BUFF] ;
+static UNA_APC vAPC[MAX_APC] ;
+static int ultimaAPC = -1 ;
+
+typedef struct {
+    PF_SOC_ISR isr ;
+    void * arg ;
+} UNA_ISR ;
+
+#ifndef MAX_SOC_ISR
+#   define MAX_SOC_ISR      0
+#endif
+
+#if MAX_SOC_ISR > 0
+static UNA_ISR vISR[MAX_SOC_ISR] ;
+static int ultimaISR = -1 ;
+#endif
 
 static void hard_fault(void)
 {
@@ -88,7 +103,7 @@ static void soc_ini(void)
 #ifdef MAX_NUM_APC
     static_assert(MAX_NUM_APC > MAX_SOC_APC, "OKKIO") ;
 #endif
-    for ( int i = 0 ; i < MAX_BUFF ; i++ ) {
+    for ( int i = 0 ; i < MAX_APC ; i++ ) {
         vAPC[i].apc = NULL ;
         vAPC[i].arg = NULL ;
     }
@@ -99,10 +114,11 @@ void SOC_apc_arg(
     PF_SOC_APC cb,
     void * arg)
 {
-    DYN_ASSERT( 0 == __get_IPSR() ) ;
+    ASSERT_BPOINT( 0 == __get_IPSR() ) ;
     ASSERT(quale < MAX_SOC_APC) ;
 
     if ( quale < MAX_SOC_APC ) {
+        ultimaAPC = quale ;
 #ifndef MAX_NUM_APC
 #   ifdef DBG_ABIL
         if ( NULL != vAPC[quale].apc ) {
@@ -146,7 +162,7 @@ bool SOC_apc_attiva(int quale)
     bool esito = false ;
 #ifndef MAX_NUM_APC
     ASSERT(quale < MAX_SOC_APC) ;
-    DYN_ASSERT( 0 == __get_IPSR() ) ;
+    ASSERT_BPOINT( 0 == __get_IPSR() ) ;
 
     if ( quale < MAX_SOC_APC ) {
         esito = NULL != vAPC[quale].apc ;
@@ -157,22 +173,90 @@ bool SOC_apc_attiva(int quale)
     return esito ;
 }
 
-static void soc_run(void)
+void SOC_isr_arg(
+    int quale,
+    PF_SOC_ISR cb,
+    void * arg)
 {
-    for ( int i = 0 ; i < MAX_BUFF ; i++ ) {
-        PF_SOC_APC apc = vAPC[i].apc ;
+#if MAX_SOC_ISR > 0
+    ASSERT(quale < MAX_SOC_ISR) ;
 
-        if ( apc ) {
-            void * arg = vAPC[i].arg ;
+    if ( quale < MAX_SOC_ISR ) {
+        ENTER_CRITICAL_SECTION ;
 
-            vAPC[i].apc = NULL ;
-            vAPC[i].arg = NULL ;
+        ultimaISR = quale ;
 
-//            DBG_PRINTF("eseguo %d", i) ;
-            apc(arg) ;
-//            DBG_PRINTF("ougese %d", i) ;
+        vISR[quale].isr = cb ;
+        vISR[quale].arg = arg ;
+
+        LEAVE_CRITICAL_SECTION ;
+    }
+    else {
+        DBG_ERR ;
+    }
+#else
+    UNUSED(quale) ;
+    UNUSED(cb) ;
+    UNUSED(arg) ;
+    BPOINT ;
+#endif
+}
+
+void isr_run(void)
+{
+#if MAX_SOC_ISR > 0
+    if ( ultimaISR >= 0 ) {
+        UNA_ISR tmpISR[MAX_SOC_ISR] = {
+            0
+        } ;
+
+        ENTER_CRITICAL_SECTION ;
+
+        for ( int i = 0 ; i < MAX_SOC_ISR ; i++ ) {
+            if ( vISR[i].isr ) {
+                tmpISR[i] = vISR[i] ;
+                vISR[i].isr = NULL ;
+            }
+        }
+        ultimaISR = -1 ;
+
+        LEAVE_CRITICAL_SECTION ;
+
+        for ( int i = 0 ; i < MAX_SOC_ISR ; i++ ) {
+            if ( tmpISR[i].isr ) {
+                tmpISR[i].isr(tmpISR[i].arg) ;
+            }
         }
     }
+#endif
+}
+
+static void apc_run(void)
+{
+    if ( ultimaAPC >= 0 ) {
+        ultimaAPC = -1 ;
+        for ( int i = 0 ; i < MAX_APC ; i++ ) {
+            PF_SOC_APC apc = vAPC[i].apc ;
+
+            if ( apc ) {
+                void * arg = vAPC[i].arg ;
+
+                vAPC[i].apc = NULL ;
+                vAPC[i].arg = NULL ;
+
+//            DBG_PRINTF("eseguo %d", i) ;
+                apc(arg) ;
+//            DBG_PRINTF("ougese %d", i) ;
+            }
+        }
+    }
+}
+
+static void soc_run(void)
+{
+    isr_run() ;
+
+    apc_run() ;
 
     timer_run() ;
 }
@@ -181,17 +265,22 @@ static RICH_CPU soc_cpu(void)
 {
     RICH_CPU s = MIN(cpu_rt, CPU_CT) ;
 
-    for ( int i = 0 ; i < MAX_BUFF ; i++ ) {
-        if ( vAPC[i].apc ) {
-            s = CPU_ATTIVA ;
-            break ;
-        }
+#if MAX_SOC_ISR > 0
+    if ( ultimaISR >= 0 ) {
+        s = CPU_ATTIVA ;
+        goto esci ;
+    }
+#endif
+
+    if ( ultimaAPC >= 0 ) {
+        s = CPU_ATTIVA ;
+        goto esci ;
     }
 
     if ( timer_attivi() ) {
         s = MIN(CPU_PAUSA, s) ;
     }
-
+esci:
     return s ;
 }
 
@@ -349,15 +438,19 @@ static void runt_stack(void)
 
 #endif
 
+#ifdef SOC_CAUSA_NC
+static uint32_t causa ;
+#else
 // Condivisa con BL
 CY_NOINIT uint32_t causa ;
+#endif
 
 E_CAUSA_RESET SOC_causa(void)
 {
     return causa ;
 }
 
-bool SOC_isr(void)
+bool SOC_in_isr(void)
 {
     uint32_t ipsr = __get_IPSR() ;
 
@@ -391,11 +484,15 @@ int main(void)
 
     // Perche' mi sono resettato?
 #ifdef CY_BOOTLOADABLE_Bootloadable_H
+#   ifdef SOC_CAUSA_NC
+    // Devo farlo io
+    causa = CySysGetResetReason(0xFFFFFFFF) ;
+#   else
     // Ci ha pensato il bootloader
+#   endif
 #else
     // Devo farlo io
-    causa = CySysGetResetReason(
-        CY_SYS_RESET_WDT | CY_SYS_RESET_PROTFAULT | CY_SYS_RESET_SW) ;
+    causa = CySysGetResetReason(0xFFFFFFFF) ;
 #endif
     // Trasformo la causa prioritizzando
     if ( causa & CY_SYS_RESET_WDT ) {
