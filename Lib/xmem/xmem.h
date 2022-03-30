@@ -1,7 +1,8 @@
 #ifndef XMEM_H_
 #define XMEM_H_
 
-#include "utili/includimi.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 #define XMEM_SECTOR_SIZE    (4 * 1024)
 #define XMEM_BLOCK_SIZE     (64 * 1024)

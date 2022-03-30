@@ -2,7 +2,7 @@
 #define FTL_CFG_
 
 #define STAMPA_DBG
-#include "utili/includimi.h"
+#include "soc/utili.h"
 
 /*
  * La libreria FTL usa due blocchi di flash, suddivisi in

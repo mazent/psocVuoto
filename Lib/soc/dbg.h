@@ -1,6 +1,13 @@
 #ifndef DBG_H_
 #define DBG_H_
 
+/*
+ * Se si stampa con la seriale sw
+ *     includere lib/diario
+ * ltrimenti
+ *     includere la cartella che implementa
+ *     le stesse funzioni
+ */
 #include "stampa.h"
 
 #ifdef STAMPA_NO_INIZ

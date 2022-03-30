@@ -1,4 +1,5 @@
 #define STAMPA_DBG
+#include "soc/utili.h"
 #include "i2c.h"
 
 #ifdef CY_PINS_SCL_H

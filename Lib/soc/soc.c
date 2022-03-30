@@ -36,6 +36,11 @@ static const RICH_CPU CPU_CT = CPU_PAUSA ;
 
 // Livello di cpu imposto a run-time
 static RICH_CPU cpu_rt = CPU_FERMA ;
+#if MAX_SOC_CPU > 1
+static RICH_CPU vCPU[MAX_SOC_CPU] = {
+    CPU_FERMA
+} ;
+#endif
 
 typedef struct {
     PF_SOC_APC apc ;
@@ -284,25 +289,15 @@ esci:
     return s ;
 }
 
-void SOC_min(RICH_CPU cpu)
-{
 #ifdef DBG_ABIL
-    if ( cpu_rt != cpu ) {
-        const char * p = NULL ;
-        switch ( cpu_rt ) {
-        case CPU_ATTIVA:
-            p = "CPU_ATTIVA" ;
-            break ;
-        case CPU_PAUSA:
-            p = "CPU_PAUSA" ;
-            break ;
-        case CPU_FERMA:
-            p = "CPU_FERMA" ;
-            break ;
-        }
 
+static void stampa_cpu(
+    RICH_CPU prima,
+    RICH_CPU dopo)
+{
+    if ( dopo != prima ) {
         const char * d = NULL ;
-        switch ( cpu ) {
+        switch ( dopo ) {
         case CPU_ATTIVA:
             d = "CPU_ATTIVA" ;
             break ;
@@ -313,11 +308,65 @@ void SOC_min(RICH_CPU cpu)
             d = "CPU_FERMA" ;
             break ;
         }
+
+        const char * p = NULL ;
+        switch ( prima ) {
+        case CPU_ATTIVA:
+            p = "CPU_ATTIVA" ;
+            break ;
+        case CPU_PAUSA:
+            p = "CPU_PAUSA" ;
+            break ;
+        case CPU_FERMA:
+            p = "CPU_FERMA" ;
+            break ;
+        }
         DBG_PRINTF("%s -> %s", p, d) ;
     }
+}
+
+#else
+#define stampa_cpu(a, b)
 #endif
+
+#if MAX_SOC_CPU <= 1
+
+void SOC_min(
+    int quale,
+    RICH_CPU cpu)
+{
+    UNUSED(quale) ;
+    ASSERT_BPOINT(0 == quale) ;
+
+    stampa_cpu(cpu_rt, cpu) ;
     cpu_rt = cpu ;
 }
+
+#else
+
+void SOC_min(
+    int quale,
+    RICH_CPU cpu)
+{
+    if ( quale < MAX_SOC_CPU ) {
+        vCPU[quale] = cpu ;
+
+        RICH_CPU cpu = vCPU[0] ;
+        for ( size_t i = 1 ; i < MAX_SOC_CPU ; ++i ) {
+            if ( vCPU[i] < cpu ) {
+                cpu = vCPU[i] ;
+            }
+        }
+
+        stampa_cpu(cpu_rt, cpu) ;
+        cpu_rt = cpu ;
+    }
+    else {
+        DBG_ERR ;
+    }
+}
+
+#endif
 
 void SOC_spegni(void)
 {
@@ -511,7 +560,7 @@ int main(void)
     CyGlobalIntEnable ;
 
     // Prima debug e s.o.
-    DDB_INIZ ;
+    DBG_INIZ ;
 
     wdog_iniz() ;
     soc_ini() ;
@@ -577,7 +626,7 @@ int main(void)
         case CPU_FERMA:
             HW_sleep() ;
 
-            DDB_ENTER_DEEP ;
+            DBG_ENTER_DEEP ;
 
             // Dormo
 #ifdef CY_PINS_DBG_BLU_H
@@ -591,7 +640,7 @@ int main(void)
 #endif
 
             // Riabilito
-            DDB_LEAVE_DEEP ;
+            DBG_LEAVE_DEEP ;
 
             HW_wake() ;
 

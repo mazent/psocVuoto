@@ -2,12 +2,14 @@
 #define COD_UTILI_H_
 
 // Servono sempre
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
-#include <stdbool.h>
+#include <stdarg.h>
 // per la static_assert
 #include <assert.h>
 // Per le PRIu32 ecc
@@ -105,7 +107,7 @@ static inline uint32_t UINTEGER(const void * v)
 }
 
 // Stampe (definire STAMPA_DBG prima di includere)
-#include "ddb/ddb.h"
+#include "dbg.h"
 
 // Varie
 #ifdef NDEBUG

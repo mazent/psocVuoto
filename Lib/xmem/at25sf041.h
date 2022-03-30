@@ -1,7 +1,9 @@
 #ifndef AT25SF041_H_
 #define AT25SF041_H_
 
-#include "utili/includimi.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define AT25SF041_BLOCK_SIZE        (64 * 1024)
 #define AT25SF041_BLOCK_COUNT       8
@@ -32,6 +34,8 @@
 
 #define AT25SF041_MANUF     0x1F
 #define AT25SF041_DEVICE    0x0184
+
+void AT25_iniz(void);
 
 void AT25_accendi(void) ;
 void AT25_spegni(void) ;

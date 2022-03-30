@@ -1,7 +1,8 @@
 #ifndef AMP_H_
 #define AMP_H_
 
-#include "utili/includimi.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 /*
  * Area di Memoria Persistente (in ram)

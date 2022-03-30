@@ -1,9 +1,12 @@
-#define STAMPA_DBG
-#include "xmem/xmem.h"
+//#define STAMPA_DBG
+#include "soc/utili.h"
+
+#if defined  CY_PINS_SPI_CS_N_H || defined CY_SPIM_SPIM_H
+
+#include "xmem.h"
 #include "soc/soc.h"
 #include "at25sf041.h"
 
-#ifdef CY_PINS_SPI_CS_N_H
 
 // Operations at invalid VCC voltages may produce spurious results and should not be attempted
 // VCC Power Supply: 2.5V to 3.6V
@@ -47,6 +50,8 @@ bool XMEM_iniz(void)
     } ;
 
     DBG_PUTS(__func__) ;
+
+    AT25_iniz();
 
     AT25_Read_Identification(&rid) ;
 #ifdef DBG_VCC
@@ -128,6 +133,8 @@ bool XMEM_erase_block(uint32_t addr)
 
 #ifdef DBG_VCC
     DBG_PRINTF( "%s(%08X) a %d mV", __func__, addr, HW_Vbatt() ) ;
+#else
+    DBG_PRINTF( "%s(%08X)", __func__, addr ) ;
 #endif
     do {
 #ifndef DBG_IGNORA_INIZ
@@ -284,7 +291,9 @@ bool XMEM_read(
     size_t dim)
 {
 #ifdef DBG_VCC
-    DBG_PRINTF( "%s(%08X, %d) a %d mV", __func__, addr, dim, HW_Vbatt() ) ;
+    DBG_PRINTF( "%s(%08X,, %d) a %d mV", __func__, addr, dim, HW_Vbatt() ) ;
+#else
+    DBG_PRINTF( "%s(%08X,, %d)", __func__, addr, dim ) ;
 #endif
 #ifndef DBG_IGNORA_INIZ
     if ( !iniz ) {
@@ -362,7 +371,9 @@ bool XMEM_write(
     bool esito = false ;
 
 #ifdef DBG_VCC
-    DBG_PRINTF( "%s(%08X, %d) a %d mV", __func__, addr, dim, HW_Vbatt() ) ;
+    DBG_PRINTF( "%s(%08X,, %d) a %d mV", __func__, addr, dim, HW_Vbatt() ) ;
+#else
+    DBG_PRINTF( "%s(%08X,, %d)", __func__, addr, dim ) ;
 #endif
 #ifdef STAMPA_ROBA
     DBG_PRINT_HEX( "\t", v, MIN(STAMPA_ROBA, dim) ) ;

@@ -1,7 +1,14 @@
 #ifndef FSPI_H_
 #define FSPI_H_
 
-#include "utili/includimi.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+void FSPI_iniz(void) ;
+
+void FSPI_sel(void) ;
+void FSPI_les(void) ;
 
 void FSPI_write(const void *, size_t) ;
 void FSPI_read(void *, size_t) ;

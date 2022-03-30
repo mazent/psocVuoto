@@ -41,6 +41,7 @@ void * SOC_calloc(size_t, size_t) ;
 void SOC_free(void *) ;
 
 // Utili per debug dei memory leak
+// per cui usate queste e non quelle sopra
 #if defined(DBG_ABIL) && defined(SOC_DBG_MALLOC)
 // Stampe abilitate
 #   define soc_malloc(a)    \
@@ -102,8 +103,8 @@ typedef enum {
     CPU_FERMA
 } RICH_CPU ;
 
-// Power management della cpu
-void SOC_min(RICH_CPU) ;
+// Power management della cpu (vedi MAX_SOC_CPU)
+void SOC_min(int, RICH_CPU) ;
 
 /*
  * Prima di invocarla occorre, se serve:

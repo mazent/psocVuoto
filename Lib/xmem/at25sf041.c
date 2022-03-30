@@ -1,7 +1,11 @@
+#define STAMPA_DBG
+#include "soc/utili.h"
+
+#if defined  CY_PINS_SPI_CS_N_H || defined CY_SPIM_SPIM_H
+
 #include "at25sf041.h"
 #include "spi/fspi.h"
 
-#ifdef CY_PINS_SPI_CS_N_H
 
 #define BIT_X_BYTE      8
 
@@ -46,26 +50,31 @@ static uint32_t gira_indirizzo(uint32_t addr)
     return addr ;
 }
 
+void AT25_iniz(void)
+{
+	FSPI_iniz();
+}
+
 void AT25_accendi(void)
 {
     uint8_t cmd = CMD_XIT_DPDOWN ;
 
-    SPI_CS_N_Write(0) ;
+    FSPI_sel() ;
 
     FSPI_write(&cmd, 1) ;
 
-    SPI_CS_N_Write(1) ;
+    FSPI_les() ;
 }
 
 void AT25_spegni(void)
 {
     uint8_t cmd = CMD_NTR_DPDOWN ;
 
-    SPI_CS_N_Write(0) ;
+    FSPI_sel() ;
 
     FSPI_write(&cmd, 1) ;
 
-    SPI_CS_N_Write(1) ;
+    FSPI_les() ;
 }
 
 void AT25_Read_Identification(AT25_READ_ID * pRI)
@@ -73,12 +82,12 @@ void AT25_Read_Identification(AT25_READ_ID * pRI)
     uint8_t cmd = CMD_RDID ;
     uint8_t rsp[3] ;
 
-    SPI_CS_N_Write(0) ;
+    FSPI_sel() ;
 
     FSPI_write( &cmd, sizeof(cmd) ) ;
     FSPI_read( rsp, sizeof(rsp) ) ;
 
-    SPI_CS_N_Write(1) ;
+    FSPI_les() ;
 
     pRI->manuf = rsp[0] ;
     memcpy(&pRI->device, rsp + 1, 2) ;
@@ -97,12 +106,12 @@ void AT25_Read(
 
     memcpy(cmd + 1, &addr, 3) ;
 
-    SPI_CS_N_Write(0) ;
+    FSPI_sel() ;
 
     FSPI_write( cmd, sizeof(cmd) ) ;
     FSPI_read(v, dim) ;
 
-    SPI_CS_N_Write(1) ;
+    FSPI_les() ;
 }
 
 static size_t dim_erased ;
@@ -131,12 +140,12 @@ bool AT25_is_erased(
 
     memcpy(cmd + 1, &addr, 3) ;
 
-    SPI_CS_N_Write(0) ;
+    FSPI_sel() ;
 
     FSPI_write( cmd, sizeof(cmd) ) ;
     FSPI_read_cb(is_erased) ;
 
-    SPI_CS_N_Write(1) ;
+    FSPI_les() ;
 
     return dim_erased == dim ;
 }
@@ -145,11 +154,11 @@ void AT25_Write_Enable(void)
 {
     uint8_t cmd = CMD_WREN ;
 
-    SPI_CS_N_Write(0) ;
+    FSPI_sel() ;
 
     FSPI_write(&cmd, 1) ;
 
-    SPI_CS_N_Write(1) ;
+    FSPI_les() ;
 }
 
 static size_t max_dim(
@@ -183,27 +192,27 @@ size_t AT25_Write(
 
     memcpy(cmd + 1, &addr, 3) ;
 
-    SPI_CS_N_Write(0) ;
+    FSPI_sel() ;
 
     FSPI_write( cmd, sizeof(cmd) ) ;
 
     const size_t DIM = MIN(dim, AT25SF041_WRITE_PAGE_BUFFER_SIZE) ;
     FSPI_write(v, DIM) ;
 
-    SPI_CS_N_Write(1) ;
+    FSPI_les() ;
 
     return DIM ;
 }
 
 static uint8_t AT25_Read_Status_Register_x(uint8_t cmd)
 {
-    SPI_CS_N_Write(0) ;
+    FSPI_sel() ;
 
     FSPI_write( &cmd, sizeof(cmd) ) ;
 
     FSPI_read(&cmd, 1) ;
 
-    SPI_CS_N_Write(1) ;
+    FSPI_les() ;
 
     return cmd ;
 }
@@ -228,11 +237,11 @@ void AT25_Sector_Erase(uint32_t addr)
 
     memcpy(cmd + 1, &addr, 3) ;
 
-    SPI_CS_N_Write(0) ;
+    FSPI_sel() ;
 
     FSPI_write( cmd, sizeof(cmd) ) ;
 
-    SPI_CS_N_Write(1) ;
+    FSPI_les() ;
 }
 
 void AT25_Block_Erase(uint32_t addr)
@@ -245,22 +254,22 @@ void AT25_Block_Erase(uint32_t addr)
 
     memcpy(cmd + 1, &addr, 3) ;
 
-    SPI_CS_N_Write(0) ;
+    FSPI_sel() ;
 
     FSPI_write( cmd, sizeof(cmd) ) ;
 
-    SPI_CS_N_Write(1) ;
+    FSPI_les() ;
 }
 
 //void AT25_Chip_Erase(void)
 //{
 //	uint8_t cmd = CMD_CE ;
 //
-//	SPI_CS_N_Write(0) ;
+//	FSPI_sel() ;
 //
 //	FSPI_write(&cmd, 1) ;
 //
-//	SPI_CS_N_Write(1) ;
+//	FSPI_les() ;
 //}
 
 #endif

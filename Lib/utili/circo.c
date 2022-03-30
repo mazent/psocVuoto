@@ -1,5 +1,6 @@
 //#define STAMPA_DBG
 #include "circo.h"
+#include "soc/utili.h"
 
 #define RIEMPITIVO_DI_DBG		0xCC
 

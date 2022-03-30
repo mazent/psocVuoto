@@ -1,15 +1,16 @@
 #define STAMPA_DBG
-#include "ufr_cfg.h"
+#include "soc/utili.h"
+#include "ufr/ufr.h"
 
 static bool iniz = false ;
 
 #ifdef UFR_E_BLE
 // Mi basta scrivere dopo advertising ...
-#	include "soc/soc.h"
+#   include "soc/soc.h"
 
 #ifdef TIM_UFR_MS
 // ... o voglio anche salvare periodicamente
-#	define USA_TIMER
+#   define USA_TIMER
 #endif
 
 static void * vUFR[UFR_NUMR] = {
@@ -22,28 +23,28 @@ static void ufr_flush(void * v)
 
     UNUSED(v) ;
 
-    for (i = 0 ; i < UFR_NUMR ; ++i) {
+    for ( i = 0 ; i < UFR_NUMR ; ++i ) {
         void * riga = vUFR[i] ;
 
-        if (NULL == riga) {
+        if ( NULL == riga ) {
             continue ;
         }
 
         if ( !ufr_writable() ) {
-        	break;
+            break ;
         }
 
         if ( CY_SYS_FLASH_SUCCESS ==
-                 CySysSFlashWriteUserRow(i, riga) ) {
-                soc_free(riga) ;
-                vUFR[i] = NULL ;
-            }
-            else {
-                DBG_ERR ;
-            }
+             CySysSFlashWriteUserRow(i, riga) ) {
+            soc_free(riga) ;
+            vUFR[i] = NULL ;
+        }
+        else {
+            DBG_ERR ;
+        }
     }
 #ifdef USA_TIMER
-    if (i < UFR_NUMR) {
+    if ( i < UFR_NUMR ) {
         timer_start(TIM_UFR, TIM_UFR_MS) ;
     }
 #endif
@@ -82,14 +83,14 @@ const void * UFR_dati(uint8_t numr)
 
     ASSERT(iniz) ;
 
-    if (!iniz) {    // NOLINT(bugprone-branch-clone)
+    if ( !iniz ) {    // NOLINT(bugprone-branch-clone)
         DBG_ERR ;
     }
-    else if (numr >= UFR_NUMR) {
+    else if ( numr >= UFR_NUMR ) {
         DBG_ERR ;
     }
 #ifdef UFR_E_BLE
-    else if (vUFR[numr]) {
+    else if ( vUFR[numr] ) {
         riga = vUFR[numr] ;
     }
 #endif
@@ -100,23 +101,25 @@ const void * UFR_dati(uint8_t numr)
     return riga ;
 }
 
-bool UFR_read(uint8_t numr, void * v)
+bool UFR_read(
+    uint8_t numr,
+    void * v)
 {
     bool esito = false ;
 
     ASSERT(iniz) ;
 
-    if (!iniz) {    // NOLINT(bugprone-branch-clone)
+    if ( !iniz ) {    // NOLINT(bugprone-branch-clone)
         DBG_ERR ;
     }
-    else if (numr >= UFR_NUMR) {
+    else if ( numr >= UFR_NUMR ) {
         DBG_ERR ;
     }
-    else if (NULL == v) {
+    else if ( NULL == v ) {
         DBG_ERR ;
     }
 #ifdef UFR_E_BLE
-    else if (vUFR[numr]) {
+    else if ( vUFR[numr] ) {
         memcpy(v, vUFR[numr], UFR_DIM) ;
         esito = true ;
     }
@@ -131,30 +134,32 @@ bool UFR_read(uint8_t numr, void * v)
     return esito ;
 }
 
-bool UFR_write(uint8_t numr, const void * v)
+bool UFR_write(
+    uint8_t numr,
+    const void * v)
 {
     bool esito = false ;
 
     ASSERT(iniz) ;
 
-    if (!iniz) {    // NOLINT(bugprone-branch-clone)
+    if ( !iniz ) {    // NOLINT(bugprone-branch-clone)
         DBG_ERR ;
     }
-    else if (numr >= UFR_NUMR) {
+    else if ( numr >= UFR_NUMR ) {
         DBG_ERR ;
     }
-    else if (NULL == v) {
+    else if ( NULL == v ) {
         DBG_ERR ;
     }
 #ifdef UFR_E_BLE
     else {
-        if (vUFR[numr]) {
+        if ( vUFR[numr] ) {
             memcpy(vUFR[numr], v, UFR_DIM) ;
             esito = true ;
         }
         else {
             void * riga = soc_malloc(UFR_DIM) ;
-            if (NULL == riga) {
+            if ( NULL == riga ) {
                 DBG_ERR ;
             }
             else {
@@ -186,7 +191,7 @@ bool UFR_write(uint8_t numr, const void * v)
     else {
         esito = CY_SYS_FLASH_SUCCESS ==
                 CySysSFlashWriteUserRow(numr, (const uint8 *) v) ;
-        if (!esito) {
+        if ( !esito ) {
             DBG_ERR ;
         }
     }
@@ -199,19 +204,19 @@ bool UFR_write(uint8_t numr, const void * v)
 void UFR_flush(void)
 {
 #ifdef USA_TIMER
-	if ( timer_running(TIM_UFR) ) {
-		// C'e' almeno una scrittura in sospeso
-		ufr_flush(NULL);
+    if ( timer_running(TIM_UFR) ) {
+        // C'e' almeno una scrittura in sospeso
+        ufr_flush(NULL) ;
 
-		/*
-		 * se c'e' ancora qlc in sospeso
-		 *     ufr_flush ha fatto ripartire il timer
-		 * altrimenti
-		 *     quando scatta il timer la ufr_flush non lo attiva
-		 */
-	}
+        /*
+         * se c'e' ancora qlc in sospeso
+         *     ufr_flush ha fatto ripartire il timer
+         * altrimenti
+         *     quando scatta il timer la ufr_flush non lo attiva
+         */
+    }
 #else
-	ufr_flush(NULL);
+    ufr_flush(NULL) ;
 #endif
 }
 
@@ -219,8 +224,8 @@ bool UFR_flushed(void)
 {
     bool esito = true ;
 
-    for (size_t i = 0 ; i < UFR_NUMR ; ++i) {
-        if (NULL != vUFR[i]) {
+    for ( size_t i = 0 ; i < UFR_NUMR ; ++i ) {
+        if ( NULL != vUFR[i] ) {
             esito = false ;
             break ;
         }
