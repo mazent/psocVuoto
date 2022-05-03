@@ -167,7 +167,7 @@ typedef void (*CB_BLE_NOTIFY)(uint16_t, bool) ;
 typedef struct {
     // caratteristica da notificare
     uint16_t handle ;
-    // dati
+    // messaggio
     void * data ;
     uint16_t dim ;
     // timeout (ms)
@@ -181,7 +181,7 @@ bool BLE_notify(BLE_NTF *) ;
 // Il messaggio deve vivere fino alla callback
 // Definire TIM_BLE_IND
 // cfr spec 4.2 [Vol 3, Part F] 3.4.7.2 Handle Value Indication pag 2199
-// Nota: ble la trasmette comunque, la scrittura della
+// Nota: ble la trasmette comunque, intercettare la scrittura della
 //       CYBLE_XXX_CONFIGURATION_DESC_HANDLE per sapere se e' abilitata
 typedef void (*CB_BLE_INDICATE)(bool) ;
 typedef struct {
@@ -196,6 +196,12 @@ bool BLE_indicate(const S_BLE_IND *) ;
 // Observer (definire BLE_OBSERVER)
 bool BLE_obs_start(void) ;
 bool BLE_obs_stop(void) ;
+
+// Seriale LE (definire i tre handle SERIALE_LE_HANDLE_XXX)
+// Invocata quando scrivono SERIALE_LE_HANDLE_DATI
+extern void sle_ricevi_cb(const void *, size_t) ;
+// Invocare per trasmettere
+bool SLE_trasmetti(const void *, size_t) ;
 
 // Power management
 void BLE_enter_deep(void) ;

@@ -51,6 +51,23 @@ extern void stampa_au(
     const void * v) ;
 extern void stampa_bonded(CYBLE_GAP_BONDED_DEV_ADDR_LIST_T * bdal) ;
 
+#if defined (SERIALE_LE_HANDLE_DATI) && defined(SERIALE_LE_HANDLE_CONFIG) && \
+    defined(SERIALE_LE_HANDLE_CTRL)
+// Se ci sono tutti allora vogliono la seriale LE
+extern void sle_iniz(void) ;
+extern void sle_conn(bool) ;
+extern bool sle_write_data(
+    const void *,
+    uint16_t) ;
+extern bool sle_write_cfg(
+    const void *,
+    uint16_t) ;
+
+#   define SERIALE_LE       1
+#endif
+
+//#define STAMPA_ROBA			1
+
 #define MTU_MIN     23
 
 #define HANDLE_NON_VALIDO       0
@@ -106,6 +123,9 @@ static void ble_attivo(void)
 
 static void ble_connect(bool conn)
 {
+#ifdef SERIALE_LE
+    sle_conn(conn) ;
+#endif
     if ( pCB ) {
         pCB->conn(conn) ;
     }
@@ -164,7 +184,9 @@ static void notifica(void)
 
         switch ( ris ) {
         case CYBLE_ERROR_OK:
-            //DBG_PRINT_HEX("notif ", dati, dim) ;
+#ifdef STAMPA_ROBA
+            DBG_PRINT_HEX("notif ", dati, dim) ;
+#endif
             pNTF->dim -= dim ;
             if ( 0 == pNTF->dim ) {
                 notif_esito(true) ;
@@ -429,6 +451,17 @@ static PF_BLE_WRITE trova_wh(CYBLE_GATT_DB_ATTR_HANDLE_T ac)
 {
     PF_BLE_WRITE pfWrite = NULL ;
 
+#ifdef SERIALE_LE
+    if ( ac == SERIALE_LE_HANDLE_DATI ) {
+        pfWrite = sle_write_data ;
+        goto fine ;
+    }
+    if ( ac == SERIALE_LE_HANDLE_CONFIG ) {
+        pfWrite = sle_write_cfg ;
+        goto fine ;
+    }
+#endif
+
     if ( pCfg ) {
         const BLE_WRITE_CFG * cfg = pCfg ;
         for ( size_t i = 0 ; i < numCfg ; ++i, ++cfg ) {
@@ -438,7 +471,9 @@ static PF_BLE_WRITE trova_wh(CYBLE_GATT_DB_ATTR_HANDLE_T ac)
             }
         }
     }
-
+#ifdef SERIALE_LE
+fine:
+#endif
     return pfWrite ;
 }
 
@@ -519,9 +554,9 @@ static void exec_write(CYBLE_GATTS_EXEC_WRITE_REQ_T * prm)
         for ( uint8_t i = 1 ; i < prm->prepWriteReqCount ; ++i ) {
             dim += prm->baseAddr[i].handleValuePair.value.len ;
         }
-
+#ifdef STAMPA_ROBA
         DBG_PRINT_HEX("exec_write", msg, dim) ;
-
+#endif
         if ( !pf(msg, dim) ) {
             // Errore
             DBG_ERR ;
@@ -901,6 +936,9 @@ static void bt_evn(
                 stampa_CYBLE_API_RESULT_T(err) ;
             }
         }
+#endif
+#ifdef SERIALE_LE
+        sle_iniz() ;
 #endif
         // Avviso
         ble_attivo() ;

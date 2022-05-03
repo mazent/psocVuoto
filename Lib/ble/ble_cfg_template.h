@@ -30,13 +30,20 @@
 // Definire per avere la callback adv_inviato,
 // che ha come scopo:
 //    1) ottimizzare il consumo evitando timer pari al tempo di adv
-// 	  2) aggiornare advertisement (https://community.cypress.com/message/36753)
+//    2) aggiornare advertisement (https://community.cypress.com/message/36753)
 //    3) aggiornare user flash row (https://community.cypress.com/thread/52519
 //		 e https://community.cypress.com/message/36753)
 // 52519 consiglia anche di alzare la priorita' dell'interruzione ble
 // (BT_bless_isr = 0)
 //#define BLE_ADV_INVIATO		1
 
+// Seriale LE (definirle tutte)
+// Occorre anche implementare sle_ricevi_cb
+// Usare SLE_trasmetti per trasmettere
+//#define SERIALE_LE_HANDLE_DATI		CYBLE_SERIALEBLE_DATI_CHAR_HANDLE
+//#define SERIALE_LE_HANDLE_CONFIG	CYBLE_SERIALEBLE_CONTROLLO_CLIENT_CHARACTERISTIC_CONFIGURATION_DESC_HANDLE
+//#define SERIALE_LE_HANDLE_CTRL		CYBLE_SERIALEBLE_CONTROLLO_CHAR_HANDLE
+
 #else
-#	warning ble_cfg_template.h incluso
+#   warning ble_cfg_template.h incluso
 #endif
