@@ -1,8 +1,7 @@
 #ifndef UCOL_H_
 #define UCOL_H_
 
-#include "utili/includimi.h"
-#include <project.h>
+#include <stdint.h>
 
 /*
  * La seriale di collaudo viene usata anche per debug!

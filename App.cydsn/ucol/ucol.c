@@ -1,15 +1,13 @@
-#include "ucol.h"
+#include "soc/utili.h"
 
 #ifdef CY_SCB_UCO_H
 
+#include "ucol.h"
 #include "soc/soc.h"
+#include "soc_cfg.h"
 #include "utili/circo.h"
 
-// Evito di eseguire l'esame dei dati nella isr
-// 115200 b/s == 11520 B/s == 1152 B/10ms
-#define SW_TO_RX        10
-
-static UCOL_RX_CB cbRx = NULL ;
+static UCOL_RX_CB rxCB = NULL ;
 
 static void tx_cr_lf(void)
 {
@@ -211,7 +209,7 @@ static void passa_dati(void * v)
 
         for (uint16_t i = 0 ; i < DIM ; ++i) {
             char rx = UCO_SpiUartReadRxData() ;
-            cbRx(&rx, 1) ;
+            rxCB(&rx, 1) ;
         }
     }
 }
@@ -236,7 +234,7 @@ void UCOL_rx_ini(UCOL_RX_CB cb)
         UCO_SetCustomInterruptHandler(NULL) ;
     }
 
-    cbRx = cb ;
+    rxCB = cb ;
 }
 
 #else
@@ -257,33 +255,7 @@ static const uint32_t IRQ_ERR = UCO_INTR_RX_OVERFLOW |
 static const uint32_t IRQ_RX = UCO_INTR_RX_FIFO_LEVEL | UCO_INTR_RX_NOT_EMPTY |
                                UCO_INTR_RX_FULL ;
 
-static void ucol_isr(void)
-{
-    uint32_t irq = UCO_GetRxInterruptSourceMasked() ;
-
-    // Ricezione
-    if (irq & IRQ_ERR) {
-        // In caso di errore me ne accorgo dal crc
-        UCO_SpiUartClearRxBuffer() ;
-    }
-    else if (irq & IRQ_RX) {
-        uint32_t level = UCO_SpiUartGetRxBufferSize() ;
-
-        while (level) {
-            uint32_t temp = UCO_SpiUartReadRxData() ;
-            (void) CIRCO_ins(&u.c, (uint8_t *) &temp, 1) ;
-            level = UCO_SpiUartGetRxBufferSize() ;
-        }
-
-        timer_start(TIM_UCOL, SW_TO_RX) ;
-    }
-
-    UCO_ClearRxInterruptSource(irq) ;
-}
-
-// Quando scatta il t.o. recupero i dati e li passo
-
-static void passa_dati(void * v)
+static void soc_isr(void * v)
 {
     static uint8_t rx[DIM_TMP_RX] ;
 
@@ -308,8 +280,8 @@ static void passa_dati(void * v)
             UCO_SetRxInterruptMode(x) ;
 
             // Esamino
-            if (dim) {
-                cbRx(rx, dim) ;
+            if ( dim && rxCB ) {
+                rxCB(rx, dim) ;
             }
             else {
                 break ;
@@ -318,24 +290,44 @@ static void passa_dati(void * v)
     } while (false) ;
 }
 
+static void ucol_isr(void)
+{
+    uint32_t irq = UCO_GetRxInterruptSourceMasked() ;
+
+    // Ricezione
+    if ( irq & IRQ_ERR ) {
+        // In caso di errore me ne accorgo dal crc
+        UCO_SpiUartClearRxBuffer() ;
+    }
+    else if ( irq & IRQ_RX ) {
+        uint32_t level = UCO_SpiUartGetRxBufferSize() ;
+
+        while ( level ) {
+            uint32_t temp = UCO_SpiUartReadRxData() ;
+            (void) CIRCO_ins(&u.c, (uint8_t *) &temp, 1) ;
+            level = UCO_SpiUartGetRxBufferSize() ;
+        }
+
+        SOC_isr(SOC_ISR_UCOL, soc_isr) ;
+    }
+
+    UCO_ClearRxInterruptSource(irq) ;
+}
+
 void UCOL_rx_ini(UCOL_RX_CB cb)
 {
     if (cb) {
         CIRCO_iniz(&u.c, MAX_BUFF) ;
 
-        timer_setcb(TIM_UCOL, passa_dati) ;
-
         UCO_SetCustomInterruptHandler(ucol_isr) ;
         UCO_SetRxInterruptMode(IRQ_RX) ;
     }
     else {
-        timer_setcb(TIM_UCOL, NULL) ;
-
         UCO_SetRxInterruptMode(0) ;
         UCO_SetCustomInterruptHandler(NULL) ;
     }
 
-    cbRx = cb ;
+    rxCB = cb ;
 }
 
 #endif
