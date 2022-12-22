@@ -1,8 +1,8 @@
 #include "soc/utili.h"
+#include "ucol.h"
 
 #ifdef CY_SCB_UCO_H
 
-#include "ucol.h"
 #include "soc/soc.h"
 #include "soc_cfg.h"
 #include "utili/circo.h"

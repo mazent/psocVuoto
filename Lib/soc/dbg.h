@@ -4,7 +4,7 @@
 /*
  * Se si stampa con la seriale sw
  *     includere lib/diario
- * ltrimenti
+ * altrimenti
  *     includere la cartella che implementa
  *     le stesse funzioni
  */

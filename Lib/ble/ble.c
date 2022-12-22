@@ -3,9 +3,11 @@
 #include "soc/soc.h"
 #include "ble.h"
 
+#ifdef BLE_EXTENDED_RANGE
 /* CYBLE-212006-01: define the test register to switch the PA/LNA hardware
   control pins */
-//#define CYREG_SRSS_TST_DDFT_CTRL      0x40030008
+#define CYREG_SRSS_TST_DDFT_CTRL      0x40030008
+#endif
 
 /*
     Equivale a clocks->edit clock->ECO->configure
@@ -1689,8 +1691,10 @@ void BLE_config(
     const size_t b)
 {}
 
-void BLE_start(void)
-{}
+void BLE_start(const BLE_CB * x)
+{
+    UNUSED(x) ;
+}
 
 void BLE_stop(void)
 {}
@@ -1723,7 +1727,9 @@ bool BLE_mac(
 }
 
 bool BLE_notify(BLE_NTF * p)
-{ return false ; }
+{
+    return false ;
+}
 
 void BLE_enter_deep(void)
 {
@@ -1745,5 +1751,7 @@ RICH_CPU BLE_cpu(void)
 {
     return CPU_FERMA ;
 }
+
+void BLE_presentati(BLE_IC * x) {}
 
 #endif

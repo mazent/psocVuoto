@@ -55,7 +55,7 @@ static void disa_timer2(void)
     CySysWdtDisable(CY_SYS_WDT_COUNTER2_MASK) ;
 }
 
-#ifdef WDOG_ADVERTISEMENT
+#if defined (WDOG_ADVERTISEMENT) && defined (CYBLE_FAST_ADV_INT_MIN)
 
 // Oltre al timer2 si usa anche l'advertisement
 
@@ -116,6 +116,9 @@ static void disa_lento(void)
 
 #define abil_lento  abil_timer2
 #define disa_lento  disa_timer2
+
+void wdt_adv_fine(void) {}
+void wdt_adv_inviato(void) {}
 
 #endif  // WDOG_ADVERTISEMENT
 

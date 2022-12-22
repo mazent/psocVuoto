@@ -1,6 +1,16 @@
 #ifndef BLE_CFG_H_
 #define BLE_CFG_H_
 
+// Definire per Extended Range
+// p.e. CYBLE-212006-01
+// Nota
+// The CYBLE-212006-01 module is certified for FCC, ISED, CE, MIC and KC
+// regulations at an output power of +7.5 dBm. To achieve this output power,
+// RFO2 (PSoC 4 BLE silicon PA level) must be set to the -12 dBm setting in
+// firmware. Settings higher than this will result in higher output power than
+// specified in the CYBLE-212006-01 certifications
+//#define BLE_EXTENDED_RANGE		1
+
 // Se definita, accende e spegne ECO
 //#define BLE_CLOCK		1
 

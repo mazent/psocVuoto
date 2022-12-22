@@ -1,11 +1,11 @@
 //#define STAMPA_DBG
 #include "soc/utili.h"
+#include "at25sf041.h"
 
 #if defined  CY_PINS_SPI_CS_N_H || defined CY_SPIM_SPIM_H
 
 #include "xmem.h"
 #include "soc/soc.h"
-#include "at25sf041.h"
 
 
 // Operations at invalid VCC voltages may produce spurious results and should not be attempted
@@ -630,6 +630,11 @@ bool XMEM_write(
     const size_t DIM = MIN(d, AT25SF041_WRITE_PAGE_BUFFER_SIZE) ;
     memcpy(riga, v, DIM) ;
     return true ;
+}
+
+void XMEM_spegni(void) 
+{
+	DBG_FUN;
 }
 
 #endif      // CY_PINS_SPI_CS_N_H
